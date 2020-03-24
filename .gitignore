@@ -1,0 +1,16 @@
+*.egg
+*.egg-info
+*.gv
+*.log
+*.pdf
+*.pyc
+*.zip
+.cache
+.coverage
+.coverage.*
+.eggs
+.pytest_cache
+.tox
+build
+dist
+docs/build/html/*
