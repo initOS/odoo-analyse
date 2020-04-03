@@ -16,23 +16,14 @@ _logger = logging.getLogger(__name__)
 
 
 class Odoo:
-    def __init__(
-        self, config="analyse.cfg", modules=None, filters=None, repositories=None
-    ):
+    def __init__(self, config="analyse.cfg", modules=None, filters=None):
         self.load_config(config)
         self.full = modules or {}
         self.modules = modules or {}
         self.filters = filters or []
-        self.repositories = repositories or {}
-        # If true: Don't render nodes in the graph without incoming and
-        # outgoing edges
-        self.skip_lonely_node = self.opt("odoo.skip_lonely_node", True)
-        # Shows the full dependency of the selected modules ignoring the
-        # path and name filter
-        self.show_full_dependency = self.opt("odoo.show_full_dependency")
 
     @classmethod
-    def fromconfig(cls, config_path):
+    def from_config(cls, config_path):
         if not os.path.isfile(config_path):
             return None
 
@@ -41,12 +32,12 @@ class Odoo:
         return odoo
 
     @classmethod
-    def frompath(cls, path):
+    def from_path(cls, path):
         if not os.path.isdir(path):
             return None
 
         odoo = cls()
-        odoo._parse(path)
+        odoo.load_path(path)
         return odoo
 
     def __len__(self):
@@ -74,6 +65,9 @@ class Odoo:
             for option_name, value in section.items():
                 key = "%s.%s" % (section_name, option_name)
                 self.config[key] = value
+
+    def set_opt(self, option, value):
+        self.config[option] = value
 
     def opt(self, name, default=None):
         return self.config.get(name, default) or None
@@ -129,7 +123,7 @@ class Odoo:
         cp.read(config_path)
 
         paths = cp.get("options", "addons_path", fallback="").split(",")
-        self._parse(paths, depth=1)
+        self.load_path(paths, depth=1)
 
     def _full_dependency(self, name):
         if name not in self:
@@ -168,23 +162,24 @@ class Odoo:
             missing.discard("base")
 
             res[name] = {
-                "refers": sorted(used),
+                "data_count": module.data,
                 "depends": sorted(module.depends),
                 "fields": fields,
+                "imports": sorted(module.imports),
                 "model_count": len(module.models),
-                "data_count": module.data,
+                "refers": sorted(used),
             }
             if missing:
                 _logger.error("Missing dependency: %s -> %s", name, missing)
                 res[name]["missing_dependency"] = sorted(missing)
 
         if file_path == "-":
-            print(json.dumps(res))
+            print(json.dumps(res, indent=2))
         else:
             with open(file_path, "w+") as fp:
-                json.dump(res, fp)
+                json.dump(res, fp, indent=2)
 
-    def _parse(self, paths, depth=None):
+    def load_path(self, paths, depth=None):
         if isinstance(paths, str):
             paths = [paths]
 
@@ -192,6 +187,17 @@ class Odoo:
 
         self.full = result.copy()
         self.modules = result.copy()
+
+    def load_json(self, filename):
+        with open(filename) as fp:
+            data = json.load(fp)
+
+            self.modules = {k: Module.from_json(v) for k, v in data.items()}
+            self.full = self.modules.copy()
+
+    def save_json(self, filename):
+        with open(filename, "w+") as fp:
+            json.dump({k: m.to_json() for k, m in self.full.items()}, fp)
 
     def _find_edges_in_loop(self, graph):
         # Eliminate not referenced and not referring modules
@@ -208,12 +214,14 @@ class Odoo:
 
         return {(a, b) for a, bs in graph.items() for b in bs}
 
-    def _show_graph(self, graph, node_check=None, color_node=None, color_edge=None):
+    def _show_graph(
+        self, graph, node_check=None, color_node=None, color_edge=None, filename=None
+    ):
         if not graph:
             return
 
         # Don't show nodes without dependencies
-        if self.skip_lonely_node:
+        if self.opt("odoo.skip_lonely_node", True):
             depends = reduce(lambda a, b: a.union(b), graph.values(), set())
             depends.intersection_update(graph)
 
@@ -230,7 +238,7 @@ class Odoo:
             visible = set(graph)
 
         # Show all dependency ignoring the filters
-        if self.show_full_dependency:
+        if self.opt("odoo.show_full_dependency"):
             nodes = list(visible)
             visited = set()
             while nodes:
@@ -243,7 +251,10 @@ class Odoo:
                 visible.update(depends)
                 nodes.extend(depends)
 
-        output = Digraph()
+        if not visible:
+            return
+
+        output = Digraph(engine=self.opt("odoo.engine", "dot"))
         for name in visible:
             depends = graph[name]
             if callable(color_node):
@@ -260,10 +271,10 @@ class Odoo:
                 else:
                     output.edge(name, dep)
 
-        self._show_output(output)
+        self._show_output(output, filename=filename)
 
-    def _show_output(self, graph):
-        graph.view()
+    def _show_output(self, graph, filename):
+        graph.view(filename=filename)
 
     def show_structure_graph(self, modules="*", models="*", views="*", fields=True):
         module_color = self.opt("structure.module_color")
@@ -317,7 +328,7 @@ class Odoo:
                 if fnmatch(view_name, views):
                     render_view(module_id, view_name, view)
 
-        self._show_output(output)
+        self._show_output(output, filename="structure.gv")
 
     def show_module_graph(
         self, modules="*", version=False, depends=True, imports=False, refers=False
@@ -372,13 +383,14 @@ class Odoo:
             return None
 
         # Show the resulting graph
-        self._show_graph(graph, check_node, color_node, color_edge)
+        self._show_graph(
+            graph, check_node, color_node, color_edge, filename="module.gv",
+        )
 
     def show_model_graph(self, models="*", inherit=True, inherits=True):
         graph = {}
         for name, model in self.models().items():
-            if name not in graph:
-                graph[name] = set()
+            graph[name] = set()
 
             if inherit:
                 graph[name].update(model.inherit)
@@ -407,14 +419,13 @@ class Odoo:
                 return loop_color
             return None
 
-        self._show_graph(graph, check_node, color_node, color_edge)
+        self._show_graph(graph, check_node, color_node, color_edge, filename="model.gv")
 
     def show_view_graph(self, views="*", inherit=True, calls=True):
         """Show the graph of the views"""
         graph = {}
         for name, view in self.views().items():
-            if name not in graph:
-                graph[name] = set()
+            graph[name] = set()
 
             if inherit:
                 graph[name].add(view.inherit)
@@ -443,4 +454,4 @@ class Odoo:
                 return loop_color
             return None
 
-        self._show_graph(graph, check_node, color_node, color_edge)
+        self._show_graph(graph, check_node, color_node, color_edge, filename="view.gv")

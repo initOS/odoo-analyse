@@ -298,8 +298,8 @@ class Module:
         module = cls(data.get("path"))
         module.name = data["name"]
         module.manifest = data["manifest"]
-        module.models = {n: Model.from_json(m) for n, m in data["models"]}
-        module.views = {n: View.from_json(m) for n, m in data["views"]}
+        module.models = {n: Model.from_json(m) for n, m in data["models"].items()}
+        module.views = {n: View.from_json(m) for n, m in data["views"].items()}
         module.data = data["data"]
         module.depends = set(data["depends"])
         module.imports = set(data["imports"])
@@ -372,7 +372,6 @@ class Module:
 
         paths = [(p, 0) for p in paths]
         blacklist = folder_blacklist()
-
         # Breadth-first search
         while paths:
             path, d = paths.pop(0)
@@ -380,7 +379,7 @@ class Module:
                 continue
 
             try:
-                module = cls.from_path(path) if d > 0 else None
+                module = cls.from_path(path)
             except Exception as e:
                 _logger.exception(e)
                 continue

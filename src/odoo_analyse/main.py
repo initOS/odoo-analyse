@@ -3,24 +3,14 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 import argparse
+import glob
 import logging
 import os
 import sys
 
-from .odoo import Odoo
+import graphviz
 
-RED, GREEN, YELLOW, BLUE, WHITE, DEFAULT = 1, 2, 3, 4, 7, 9
-RESET_SEQ = "\033[0m"
-COLOR_SEQ = "\033[1;%dm"
-BOLD_SEQ = "\033[1m"
-COLOR_PATTERN = "%s%s%%s%s" % (COLOR_SEQ, COLOR_SEQ, RESET_SEQ)
-LEVEL_COLOR_MAPPING = {
-    logging.DEBUG: (BLUE, DEFAULT),
-    logging.INFO: (GREEN, DEFAULT),
-    logging.WARNING: (YELLOW, DEFAULT),
-    logging.ERROR: (RED, DEFAULT),
-    logging.CRITICAL: (WHITE, RED),
-}
+from .odoo import Odoo
 
 _logger = logging.getLogger(__name__)
 
@@ -40,155 +30,193 @@ def parse_args():
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("path")
-    parser.add_argument(
-        "--no-config",
-        action="store_true",
+
+    group = parser.add_argument_group("Loading/Saving")
+    group.add_argument(
+        "-c",
+        "--config",
         default=False,
-        help="The path specifies a folder and not a configuration file",
+        help="Specify an odoo configuration file to load modules",
     )
-    parser.add_argument(
+    group.add_argument(
+        "-p",
+        "--path",
+        default=[],
+        action="append",
+        help="Specify a path to search for odoo modules",
+    )
+    group.add_argument(
+        "-l", "--load", default=False, help="Load from a json file",
+    )
+    group.add_argument(
+        "-s", "--save", default=False, help="Save to a json file",
+    )
+
+    group = parser.add_argument_group("Filters")
+    group.add_argument(
         "--path-filter",
-        type=str,
         default="*",
         help="Filter out modules which paths aren't matching the glob",
     )
-    parser.add_argument(
+    group.add_argument(
         "--models",
-        type=str,
         default="*",
         help="Filter out models which names aren't matching the glob",
     )
-    parser.add_argument(
+    group.add_argument(
         "--modules",
-        type=str,
         default="*",
         help="Filter out modules which names aren't matching the glob",
     )
-    parser.add_argument(
+    group.add_argument(
         "--views",
-        type=str,
         default="*",
         help="Filter out views which names aren't matching the glob",
     )
-    parser.add_argument(
-        "--tests-filter",
+    group.add_argument(
+        "--test-filter",
         action="store_true",
         default=False,
         help="Include testing modules starting with test_",
     )
-    parser.add_argument(
-        "--analyse",
-        type=str,
-        default="",
-        help="Analyse the modules and store it in the given file",
+
+    group = parser.add_argument_group(
+        "Module graphs",
+        "Generate a module dependency graph using the following options to "
+        "Specify the visible dependencies",
     )
-    parser.add_argument(
-        "--dependency-graph",
+    group.add_argument(
+        "--show-dependency",
         action="store_true",
         default=False,
-        help="Show the module dependency of the manifest in the module graph",
+        help="Show the module dependency of the manifest",
     )
-    parser.add_argument(
-        "--import-graph",
+    group.add_argument(
+        "--show-import",
         action="store_true",
         default=False,
-        help="Show python imports in the module graph",
+        help="Show python imports between modules",
     )
-    parser.add_argument(
-        "--reference-graph",
+    group.add_argument(
+        "--show-reference",
         action="store_true",
         default=False,
-        help="Show xml references in the module graph",
+        help="Show xml references between modules",
     )
-    parser.add_argument(
+    group.add_argument(
         "--migration",
-        type=str,
         default="*",
         help="Color the migration status in the module graph. "
         "Must be a glob which matches all migrated versions",
     )
-    parser.add_argument(
+
+    group = parser.add_argument_group("Model graph")
+    group.add_argument(
         "--model-graph",
         action="store_true",
         default=False,
         help="Show the dependency graph of the models",
     )
-    parser.add_argument(
+    group.add_argument(
+        "--no-model-inherit",
+        action="store_true",
+        default=False,
+        help="Don't use inherit in the dependency graph of the models",
+    )
+    group.add_argument(
+        "--no-model-inherits",
+        action="store_true",
+        default=False,
+        help="Don't use inherits in the dependency graph of the models",
+    )
+
+    group = parser.add_argument_group("View graph")
+    group.add_argument(
         "--view-graph",
         action="store_true",
         default=False,
         help="Show the dependency graph of the views",
     )
-    parser.add_argument(
+    group.add_argument(
+        "--no-view-inherit",
+        action="store_true",
+        default=False,
+        help="Don't use inherit in the dependency graph of the views",
+    )
+    group.add_argument(
+        "--no-view-call",
+        action="store_true",
+        default=False,
+        help="Don't use t-calls in the dependency graph of the views",
+    )
+
+    group = parser.add_argument_group("Stucture graph")
+    group.add_argument(
         "--structure-graph",
         action="store_true",
         default=False,
-        help="Show the module structure graph",
+        help="Show the structure of the modules",
     )
-    parser.add_argument(
+
+    group = parser.add_argument_group("Misc")
+    group.add_argument(
+        "--analyse",
+        default="",
+        help="Analyse the modules and store it in the given file",
+    )
+
+    group = parser.add_argument_group("Options")
+    group.add_argument(
         "--full-graph",
         action="store_true",
         default=False,
-        help="Show the full name and only use the filters for the starting nodes",
+        help="Show the full graph and only use the filters for the starting nodes",
     )
-    parser.add_argument(
-        "--log-level",
-        default="INFO",
-        help="Set the log level. Possible values: CRITICAL, DEBUG, ERROR, "
-        "INFO and WARNING",
+    group.add_argument(
+        "--renderer",
+        default="dot",
+        help="Specify the rendering engine. %s" % graphviz.ENGINES,
     )
+
     return parser.parse_args()
-
-
-class ColoredFormatter(logging.Formatter):
-    def format(self, record):
-        fg, bg = LEVEL_COLOR_MAPPING.get(record.levelno, (GREEN, DEFAULT))
-        record.levelname = COLOR_PATTERN % (30 + fg, 40 + bg, record.levelname)
-        return logging.Formatter.format(self, record)
 
 
 def main():
     args = parse_args()
 
-    logging.addLevelName(25, "INFO")
-    fmt = "%(asctime)s %(levelname)s %(name)s: %(message)s"
-
     handler = logging.StreamHandler(sys.stdout)
-
-    formatter = ColoredFormatter(fmt)
-    handler.setFormatter(formatter)
+    handler.setFormatter(logging.Formatter("%(message)s"))
 
     logger = logging.getLogger()
     logger.addHandler(handler)
-    logger.setLevel(args.log_level)
 
-    # Load the odoo configuration and the options
-    if args.no_config and not os.path.isdir(args.path):
-        _logger.critical("Path %s is not a directory", args.path)
-        sys.exit(1)
-
-    if not args.no_config and not os.path.isfile(args.path):
-        _logger.critical("Path %s is not a file", args.path)
-        sys.exit(1)
-
-    if args.no_config:
-        odoo = Odoo.frompath(args.path)
+    # Load modules
+    if args.config:
+        odoo = Odoo.from_config(args.config)
     else:
-        odoo = Odoo.fromconfig(args.path)
+        odoo = Odoo()
 
+    if args.load:
+        odoo.load_json(args.load)
+
+    for p in args.path:
+        odoo.load_path(glob.glob(os.path.expanduser(p)))
+
+    # Save the modules
+    if args.save:
+        odoo.save_json(args.save)
+
+    # Set global options
     if args.full_graph:
         odoo.show_full_dependency = True
 
+    if args.renderer in graphviz.ENGINES:
+        odoo.set_opt("odoo.engine", args.renderer)
+
     # Apply the filters
-    if not args.tests_filter:
+    if not args.test_filter:
         odoo.test_filter()
     odoo.path_filter(args.path_filter)
-
-    # Execute the analysis
-    if args.analyse and args.no_config:
-        _logger.critical("Use an odoo configuration file for the analyse")
-        sys.exit(1)
 
     if args.analyse:
         odoo.analyse(args.analyse)
@@ -203,17 +231,23 @@ def main():
             args.reference_graph,
         )
 
-    # Render the strucutre graph
+    # Render the structure graph
     if args.structure_graph:
         odoo.show_structure_graph(args.modules, args.models, args.views)
 
     # Render the model graph
     if args.model_graph:
-        odoo.show_model_graph(args.models)
+        odoo.show_model_graph(
+            args.models,
+            inherit=not args.no_model_inherit,
+            inherits=not args.no_model_inherits,
+        )
 
     # Render the view graph
     if args.view_graph:
-        odoo.show_view_graph(args.views)
+        odoo.show_view_graph(
+            args.views, inherit=not args.no_view_inherit, calls=not args.no_view_call,
+        )
 
 
 if __name__ == "__main__":
