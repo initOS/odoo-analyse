@@ -138,6 +138,18 @@ class Odoo:
                 mods.extend(self.full[mod].depends)
         return res
 
+    def interactive(self):
+        local_vars = {"analyse": self}
+        try:
+            from IPython import start_ipython
+
+            start_ipython(argv=[], user_ns=local_vars)
+        except ImportError:
+            from code import interact
+
+            banner = ["%s: %s" % pair for pair in sorted(local_vars.items())]
+            interact("\n".join(banner), local=local_vars)
+
     def analyse(self, file_path):
         _logger.debug("Start analysing...")
         models = {
@@ -215,7 +227,7 @@ class Odoo:
         return {(a, b) for a, bs in graph.items() for b in bs}
 
     def _show_graph(
-        self, graph, node_check=None, color_node=None, color_edge=None, filename=None
+        self, graph, node_check=None, color_node=None, color_edge=None, filename=None,
     ):
         if not graph:
             return
@@ -276,7 +288,9 @@ class Odoo:
     def _show_output(self, graph, filename):
         graph.view(filename=filename)
 
-    def show_structure_graph(self, modules="*", models="*", views="*", fields=True):
+    def show_structure_graph(
+        self, modules="*", models="*", views="*", fields=True, filename=None
+    ):
         module_color = self.opt("structure.module_color")
         module_shape = self.opt("structure.module_shape", "doubleoctagon")
         model_color = self.opt("structure.model_color")
@@ -328,10 +342,16 @@ class Odoo:
                 if fnmatch(view_name, views):
                     render_view(module_id, view_name, view)
 
-        self._show_output(output, filename="structure.gv")
+        self._show_output(output, filename=filename or "structure.gv")
 
     def show_module_graph(
-        self, modules="*", version=False, depends=True, imports=False, refers=False
+        self,
+        modules="*",
+        version=False,
+        depends=True,
+        imports=False,
+        refers=False,
+        filename=None,
     ):
         # Build the dependency graph
         graph = {}
@@ -384,10 +404,10 @@ class Odoo:
 
         # Show the resulting graph
         self._show_graph(
-            graph, check_node, color_node, color_edge, filename="module.gv",
+            graph, check_node, color_node, color_edge, filename=filename or "module.gv",
         )
 
-    def show_model_graph(self, models="*", inherit=True, inherits=True):
+    def show_model_graph(self, models="*", inherit=True, inherits=True, filename=None):
         graph = {}
         for name, model in self.models().items():
             graph[name] = set()
@@ -419,9 +439,11 @@ class Odoo:
                 return loop_color
             return None
 
-        self._show_graph(graph, check_node, color_node, color_edge, filename="model.gv")
+        self._show_graph(
+            graph, check_node, color_node, color_edge, filename=filename or "model.gv"
+        )
 
-    def show_view_graph(self, views="*", inherit=True, calls=True):
+    def show_view_graph(self, views="*", inherit=True, calls=True, filename=None):
         """Show the graph of the views"""
         graph = {}
         for name, view in self.views().items():
@@ -454,4 +476,6 @@ class Odoo:
                 return loop_color
             return None
 
-        self._show_graph(graph, check_node, color_node, color_edge, filename="view.gv")
+        self._show_graph(
+            graph, check_node, color_node, color_edge, filename=filename or "view.gv"
+        )

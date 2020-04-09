@@ -164,6 +164,13 @@ def parse_args():
         default="",
         help="Analyse the modules and store it in the given file",
     )
+    group.add_argument(
+        "-i",
+        "--interactive",
+        default=False,
+        action="store_true",
+        help="Enter the interactive mode",
+    )
 
     group = parser.add_argument_group("Options")
     group.add_argument(
@@ -195,6 +202,10 @@ def main():
         odoo = Odoo.from_config(args.config)
     else:
         odoo = Odoo()
+
+    if args.interactive:
+        odoo.interactive()
+        sys.exit()
 
     if args.load:
         odoo.load_json(args.load)
