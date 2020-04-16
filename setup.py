@@ -35,6 +35,10 @@ setup(
             "graphviz",
         ],
     },
+    project_urls={
+        'Documentation': 'https://github.com/initOS/odoo-analyse/README.md',
+        'Usage': 'https://odoo-code-search.com',
+    },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: Apache Software License",
