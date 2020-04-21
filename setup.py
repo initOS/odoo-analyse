@@ -15,8 +15,8 @@ setup(
     description="Package to analyse and visualize odoo modules",
     long_description=read('README.md'),
     license="AGPL-3.0",
-    keywords="...",
-    url="...",
+    keywords="odoo, modules, analyze, dependency, graph",
+    url="https://github.com/initOS/odoo-analyse",
     packages=find_packages("src"),
     package_dir={"": "src"},
     include_package_data=True,
@@ -34,6 +34,10 @@ setup(
         "console": [
             "graphviz",
         ],
+    },
+    project_urls={
+        'Documentation': 'https://github.com/initOS/odoo-analyse/README.md',
+        'Usage': 'https://odoo-code-search.com',
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
