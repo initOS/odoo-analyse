@@ -36,7 +36,7 @@ setup(
         ],
     },
     project_urls={
-        'Documentation': 'https://github.com/initOS/odoo-analyse/README.md',
+        'Documentation': 'https://github.com/initOS/odoo-analyse/blob/master/README.md',
         'Usage': 'https://odoo-code-search.com',
     },
     classifiers=[
