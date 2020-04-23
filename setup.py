@@ -4,21 +4,23 @@ from setuptools import find_packages, setup
 
 
 def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
-
+    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+        return f.read()
 
 setup(
-    name="Odoo Analyse",
-    version="0.1",
+    name="odoo-analyse",
+    version="0.1.0",
     author="initOS GmbH",
     author_email="info@initos.com",
-    description="Package to analyse and visualize odoo modules",
+    description="Package to analyse odoo modules",
     long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     license="AGPL-3.0",
     keywords="odoo, modules, analyze, dependency, graph",
     url="https://github.com/initOS/odoo-analyse",
     packages=find_packages("src"),
     package_dir={"": "src"},
+    package_name="odoo-analyse",
     include_package_data=True,
     entry_points={
         'console_scripts':

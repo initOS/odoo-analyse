@@ -4,15 +4,11 @@ Analyse tool for odoo modules
 
 ## Installation
 
-```bash
-python3 setup.py install
-```
+```pip install odoo-analyse```
 
 ## Usage
 
-```bash
-odoo_analyse --help
-```
+```odoo_analyse --help```
 
 ### Read in modules
 
