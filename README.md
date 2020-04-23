@@ -4,7 +4,7 @@ Analyse tool for odoo modules
 
 ## Installation
 
-```pip install Odoo-Analyse```
+```pip install odoo-analyse```
 
 ## Usage
 
