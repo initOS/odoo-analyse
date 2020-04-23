@@ -12,7 +12,7 @@ setup(
     version="0.1",
     author="initOS GmbH",
     author_email="info@initos.com",
-    description="Package to analyse and visualize odoo modules",
+    description="Package to analyse odoo modules",
     long_description=read('README.md'),
     license="AGPL-3.0",
     keywords="odoo, modules, analyze, dependency, graph",
