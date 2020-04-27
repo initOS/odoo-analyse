@@ -8,7 +8,10 @@ from configparser import ConfigParser
 from fnmatch import fnmatch
 from functools import reduce
 
-from graphviz import Digraph, Graph
+try:
+    from graphviz import Digraph, Graph
+except ImportError:
+    Digraph = Graph = None
 
 from .module import Module
 
