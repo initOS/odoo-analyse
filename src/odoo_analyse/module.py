@@ -92,6 +92,13 @@ class Module:
         return ""
 
     @property
+    def readme_type(self):
+        for f in os.listdir(self.path):
+            if is_readme(f):
+                return os.path.splitext(f)[1] or None
+        return None
+
+    @property
     def summary(self):
         return self.manifest.get("summary", "")
 
