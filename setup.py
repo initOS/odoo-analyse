@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name="odoo-analyse",
-    version="0.1.1",
+    version="0.2",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",
