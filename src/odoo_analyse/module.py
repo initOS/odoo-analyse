@@ -382,6 +382,7 @@ class Module:
         # Breadth-first search
         while paths:
             path, d = paths.pop(0)
+            path = path.strip()
             if depth is not None and d > depth:
                 continue
 

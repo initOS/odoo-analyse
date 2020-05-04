@@ -4,7 +4,8 @@ Analyse tool for odoo modules
 
 ## Installation
 
-```pip install odoo-analyse```
+Install the module with the ability to render graphs:
+```pip install "odoo-analyse[graph]"```
 
 ## Usage
 
