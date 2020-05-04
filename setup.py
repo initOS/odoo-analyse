@@ -9,7 +9,7 @@ def read(fname):
 
 setup(
     name="odoo-analyse",
-    version="0.2",
+    version="0.3",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",
@@ -33,7 +33,7 @@ setup(
         "lxml",
     ],
     extras_require={
-        "console": [
+        "graph": [
             "graphviz",
         ],
     },

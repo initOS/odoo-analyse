@@ -233,13 +233,13 @@ def main():
         odoo.analyse(args.analyse)
 
     # Render the module graph if needed
-    if args.dependency_graph or args.import_graph or args.reference_graph:
+    if args.show_dependency or args.show_import or args.show_reference:
         odoo.show_module_graph(
             args.modules,
             args.migration,
-            args.dependency_graph,
-            args.import_graph,
-            args.reference_graph,
+            args.show_dependency,
+            args.show_import,
+            args.show_reference,
         )
 
     # Render the structure graph
