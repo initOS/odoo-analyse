@@ -211,7 +211,7 @@ def main():
         odoo.load_json(args.load)
 
     for p in args.path:
-        odoo.load_path(glob.glob(os.path.expanduser(p)))
+        odoo.load_path(glob.glob(os.path.abspath(os.path.expanduser(p))))
 
     # Save the modules
     if args.save:
