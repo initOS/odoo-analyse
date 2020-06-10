@@ -50,12 +50,12 @@ def hexhash(s):
     return hashlib.md5(s).hexdigest()
 
 
-def hexhash_files(files):
+def hexhash_files(files, folder):
     """ Generates a hash for a list of files """
     hashes = []
     for f in sorted(set(files)):
         hashsum = hexhash(open(f, "rb").read())
-        hashes.append(f"{hashsum} {f}")
+        hashes.append(f"{hashsum} {os.path.relpath(f, folder)}")
     return hexhash("\n".join(hashes))
 
 
