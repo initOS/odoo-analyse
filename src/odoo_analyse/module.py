@@ -144,7 +144,7 @@ class Module:
         self.language = analyse_language(self.path)
 
     def analyse_hash(self, files_list):
-        self.hashsum = hexhash_files(files_list)
+        self.hashsum = hexhash_files(files_list, self.path)
 
     def _load_python(self, path, filename):
         def parse_python(path, filename):
