@@ -203,15 +203,15 @@ def main():
     else:
         odoo = Odoo()
 
-    if args.interactive:
-        odoo.interactive()
-        sys.exit()
-
     if args.load:
         odoo.load_json(args.load)
 
     for p in args.path:
         odoo.load_path(glob.glob(os.path.abspath(os.path.expanduser(p))))
+
+    if args.interactive:
+        odoo.interactive()
+        sys.exit()
 
     # Save the modules
     if args.save:
