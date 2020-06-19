@@ -55,7 +55,8 @@ def hexhash_files(files, folder):
     hashes = []
     for f in sorted(set(files)):
         hashsum = hexhash(open(f, "rb").read())
-        hashes.append(f"{hashsum} {os.path.relpath(f, folder)}")
+        rel_path = os.path.relpath(f, folder) if f.startswith(folder) else f
+        hashes.append(f"{hashsum} {rel_path}")
     return hexhash("\n".join(hashes))
 
 
