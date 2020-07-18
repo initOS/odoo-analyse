@@ -372,7 +372,7 @@ class Module:
         return module
 
     @classmethod
-    def find_modules(cls, paths, depth=None):
+    def find_modules_iter(cls, paths, depth=None):
         result = {}
         if isinstance(paths, str):
             paths = [paths]
@@ -405,3 +405,7 @@ class Module:
                 paths.extend((p, d + 1) for p in sub_paths if os.path.isdir(p))
 
         return result
+
+    @classmethod
+    def find_modules(cls, paths, depth=None):
+        return dict(cls.find_modules_iter(paths, depth))
