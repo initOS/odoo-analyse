@@ -6,7 +6,9 @@ import csv
 import logging
 import os
 import re
+import sys
 import tempfile
+from functools import partial
 
 from lxml import etree
 
@@ -147,15 +149,19 @@ class Module:
         self.hashsum = hexhash_files(files_list, self.path)
 
     def _load_python(self, path, filename):
-        def parse_python(path, filename):
-            name = os.path.join(path, filename)
-            with open(name) as fp:
-                return ast.parse(fp.read())
+        def parse_python(filepath, version=None):
+            with open(filepath) as fp:
+                data = fp.read()
 
-        try:
-            return parse_python(path, filename)
-        except (SyntaxError, TabError):
-            filepath = os.path.join(path, filename)
+            # Python 3.8 allows setting the feature level
+            if version:
+                parsed = ast.parse(data, feature_version=version)
+                _logger.warning("Feature version %s %s", version, filepath)
+                self.status.add("feature-%s-%s" % version)
+                return parsed
+            return ast.parse(data)
+
+        def port_fix_file(filepath):
             with tempfile.NamedTemporaryFile("w+") as tmp:
                 tmp.file.write(open(filepath, "r").read())
                 if try_automatic_port(tmp.name):
@@ -165,6 +171,24 @@ class Module:
                     _logger.warning("Fixed indentation %s", filepath)
                     self.status.add("indent-fix")
                 return parse_python(*os.path.split(tmp.name))
+
+        versions = [None]
+        if sys.version_info >= (3, 8):
+            versions.append((3, 6))
+
+        funcs = [partial(parse_python, version=ver) for ver in versions]
+        funcs.append(port_fix_file)
+
+        exc = None
+        filepath = os.path.join(path, filename)
+        for func in funcs:
+            try:
+                return func(filepath)
+            except (SyntaxError, TabError) as e:
+                exc = e
+
+        _logger.error("Not parsable %s: %s", filepath, exc)
+        raise exc
 
     def _parse_class_def(self, obj):
         model = Model.from_ast(obj)
