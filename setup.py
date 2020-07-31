@@ -7,9 +7,10 @@ def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as f:
         return f.read()
 
+
 setup(
     name="odoo-analyse",
-    version="0.5",
+    version="0.6",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",

@@ -419,7 +419,7 @@ class Module:
             if module is not None:
                 name = module.name
                 if name not in result:
-                    result[name] = module
+                    yield name, module
             else:
                 sub_paths = [
                     os.path.join(path, p)
@@ -427,8 +427,6 @@ class Module:
                     if p not in blacklist
                 ]
                 paths.extend((p, d + 1) for p in sub_paths if os.path.isdir(p))
-
-        return result
 
     @classmethod
     def find_modules(cls, paths, depth=None):
