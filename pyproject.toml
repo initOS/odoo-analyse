@@ -1,0 +1,37 @@
+[tool.black]
+line-length = 88
+target-version = ['py36', 'py37', 'py38']
+include = '(\.pyi?$|src|tests)'
+
+[tool.pytest.ini_options]
+norecursedirs = 'tests/testing_module'
+testpaths = 'tests'
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = clean,testing,report
+
+[testenv]
+depends:
+    testing: clean
+    report: testing
+
+[testenv:testing]
+deps = pytest
+       pytest-cov
+       coverage
+commands = pytest --cov {envsitepackagesdir}/odoo_analyse --cov-append
+
+[testenv:report]
+skip_install = true
+deps = coverage
+commands =
+  coverage html
+  coverage report --fail-under=80
+
+[testenv:clean]
+skip_install = true
+deps = coverage
+commands = coverage erase
+"""

@@ -17,7 +17,7 @@ class View:
         return "<View: %s>" % self.name
 
     def copy(self):
-        return View(self.name, self.inherit, self.calls.copy())
+        return View(self.name, self.inherit, self.calls.copy(), self.model)
 
     def update(self, other):
         if self.name == other.name:
@@ -44,7 +44,7 @@ class View:
         return cls(
             name=data.get("name", None),
             inherit=data.get("inherit", None),
-            model=data.get("models", None),
+            model=data.get("model", None),
             calls=data.get("calls", None),
         )
 

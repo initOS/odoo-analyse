@@ -16,3 +16,4 @@
 build
 dist
 docs/build/html/*
+htmlcov

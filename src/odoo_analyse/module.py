@@ -79,7 +79,7 @@ class Module:
 
     @property
     def installable(self):
-        return self.manifest.get("installable", "")
+        return self.manifest.get("installable", False)
 
     @property
     def license(self):
@@ -170,7 +170,7 @@ class Module:
                 if fix_indentation(tmp.name):
                     _logger.warning("Fixed indentation %s", filepath)
                     self.status.add("indent-fix")
-                return parse_python(*os.path.split(tmp.name))
+                return parse_python(tmp.name)
 
         versions = [None]
         if sys.version_info >= (3, 8):
@@ -224,7 +224,8 @@ class Module:
                 if mod != self.name:
                     self.imports.add(mod)
                 continue
-            elif imp.split(".", 1)[0] in ["odoo", "openerp"]:
+
+            if imp.split(".", 1)[0] in ["odoo", "openerp"]:
                 continue
 
             p = path
@@ -288,7 +289,8 @@ class Module:
             view = View.from_xml(self.name, node)
             if not view:
                 continue
-            elif view.name in self.views:
+
+            if view.name in self.views:
                 self.views[view.name].update(view)
             else:
                 self.views[view.name] = view
@@ -339,7 +341,7 @@ class Module:
         module.status = set(data["status"])
         module.language = data["language"]
         module.words = set(data["words"])
-        module.hashsum = set(data["hashsum"])
+        module.hashsum = data["hashsum"]
         return module
 
     @classmethod
