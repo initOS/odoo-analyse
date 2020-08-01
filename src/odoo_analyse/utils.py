@@ -53,7 +53,6 @@ def hexhash(s):
 def hexhash_files(files, folder):
     """ Generates a hash for a list of files """
     hashes = []
-    print(files)
     for f in sorted(set(files)):
         hashsum = hexhash(open(f, "rb").read())
         rel_path = os.path.relpath(f, folder) if f.startswith(folder) else f

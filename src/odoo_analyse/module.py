@@ -23,7 +23,7 @@ from .utils import (
 )
 from .view import View
 
-Manifests = {"__odoo__.py", "__openerp__.py", "__manifest__.py"}
+Manifests = ["__manifest__.py", "__odoo__.py", "__openerp__.py"]
 _logger = logging.getLogger(__name__)
 
 
