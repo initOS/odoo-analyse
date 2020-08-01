@@ -356,7 +356,7 @@ class Module:
     def from_path(cls, path):
         files_list = []
         module = cls(path)
-        found_init, found_manifest = False, False
+        found_init, found_manifest = False, 0
         if not path.endswith("/"):
             path += "/"
 
@@ -364,11 +364,14 @@ class Module:
         for f in Manifests:
             filepath = os.path.join(path, f)
             if os.path.isfile(filepath):
-                found_manifest = True
+                found_manifest += 1
                 module._parse_manifest(filepath)
 
         if not found_manifest:
             return None
+
+        if found_manifest > 1:
+            module.status.add("mutiple-manifest")
 
         for f in os.listdir(path):
             # Found the init script
