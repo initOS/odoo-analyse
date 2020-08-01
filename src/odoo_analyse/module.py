@@ -250,11 +250,19 @@ class Module:
                 )
 
     def _parse_csv(self, path):
+        if not os.path.isfile(path):
+            self.status.add("missing-file")
+            return
+
         with open(path) as fp:
             obj = csv.reader(fp)
             self.data += max(0, obj.line_num - 1)
 
     def _parse_xml(self, path):
+        if not os.path.isfile(path):
+            self.status.add("missing-file")
+            return
+
         obj = etree.parse(path)
         # Supported special tags defining data
         tags = [
