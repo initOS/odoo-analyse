@@ -27,9 +27,9 @@ class ResUsers(models.Model):
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    def testing(self, async):
+    def testing(self, async, k=100):
         print(async)
-        print(RPC)
+        print(RPC, k)
 
     k = int()
 

@@ -5,18 +5,23 @@ import ast
 
 
 class Model:
-    def __init__(self, name=None, inherit=None, inherits=None, fields=None):
+    def __init__(self, name=None, inherit=None, inherits=None, fields=None, funcs=None):
         self.name = name
         self.inherit = set(inherit or [])
         self.inherits = inherits or {}
         self.fields = fields or {}
+        self.funcs = funcs or {}
 
     def __repr__(self):
         return "<Model: %s>" % self.name
 
     def copy(self):
         return Model(
-            self.name, self.inherit.copy(), self.inherits.copy(), self.fields.copy(),
+            self.name,
+            self.inherit.copy(),
+            self.inherits.copy(),
+            self.fields.copy(),
+            self.funcs.copy(),
         )
 
     def update(self, other):
@@ -24,6 +29,7 @@ class Model:
             self.inherit.update(other.inherit)
             self.inherits.update(other.inherits)
             self.fields.update(other.fields)
+            self.funcs.update(other.funcs)
 
     def _parse_assign(self, obj):
         assignments = [k.id for k in obj.targets if isinstance(k, ast.Name)]
@@ -44,7 +50,7 @@ class Model:
                 inhs = ast.literal_eval(value)
                 if isinstance(inhs, dict):
                     self.inherits.update(inhs)
-                    self.fields.update({k: "fields.Many2one" for k in inhs})
+                    self.fields.update({k: "fields.Many2one" for k in inhs.values()})
             elif isinstance(value, ast.Call):
                 f = value.func
                 if not isinstance(f, ast.Attribute):
@@ -62,6 +68,7 @@ class Model:
             "inherit": list(self.inherit),
             "inherits": self.inherits,
             "fields": self.fields,
+            "funcs": self.funcs,
         }
 
     @classmethod
@@ -71,6 +78,7 @@ class Model:
             inherit=data.get("inherit", None),
             inherits=data.get("inherits", None),
             fields=data.get("fields", None),
+            funcs=data.get("funcs", None),
         )
 
     @classmethod
@@ -79,6 +87,8 @@ class Model:
         for child in obj.body:
             if isinstance(child, ast.Assign):
                 model._parse_assign(child)
+            elif isinstance(child, ast.FunctionDef):
+                model.funcs[child.name] = [a.arg for a in child.args.args]
 
         if model.name:
             return model
