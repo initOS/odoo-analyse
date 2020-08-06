@@ -190,8 +190,8 @@ class Module:
         _logger.error("Not parsable %s: %s", filepath, exc)
         raise exc
 
-    def _parse_class_def(self, obj):
-        model = Model.from_ast(obj)
+    def _parse_class_def(self, obj, content):
+        model = Model.from_ast(obj, content)
         if not model or not model.name:
             return
         if model.name in self.models:
@@ -201,6 +201,9 @@ class Module:
 
     def _parse_python(self, path, filename):
         obj = self._load_python(path, filename)
+
+        with open(os.path.join(path, filename)) as fp:
+            content = fp.read()
 
         self.add(files=path + filename)
 
@@ -215,7 +218,7 @@ class Module:
 
         for child in obj.body:
             if isinstance(child, ast.ClassDef):
-                self._parse_class_def(child)
+                self._parse_class_def(child, content)
 
         patterns = ["odoo.addons.", "openerp.addons."]
         for imp in imports:

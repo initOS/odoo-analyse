@@ -1,3 +1,6 @@
+# © 2020 initOS GmbH
+# License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
+
 from odoo import fields, models
 
 
@@ -8,7 +11,7 @@ class TestAbstract(models.AbstractModel):
 class TestModel(models.Model):
     _name = "test.model"
     _inherits = {
-        "user_id": "res.users",
+        "res.users": "user_id",
     }
 
     a = fields.Char()
@@ -20,8 +23,13 @@ class TestModel(models.Model):
 class ResUsers(models.Model):
     _inherit = ["res.users", "test.abstract"]
 
+    def _get_default(self):
+        return False
+
     new_boolean = fields.Boolean()
-    new_m2o = fields.Many2one("res.partner")
+    new_m2o = fields.Many2one(
+        "res.partner", _get_default(), string="Label", default=_get_default + 1,
+    )
 
 
 class ResPartner(models.Model):
