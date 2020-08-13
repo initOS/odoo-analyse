@@ -1,6 +1,7 @@
 # © 2019 initOS GmbH
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
+import ast
 import hashlib
 import logging
 import os
@@ -125,3 +126,23 @@ def analyse_language(path):
         value["fraction_from_total"] = value["lines"] / total_code
 
     return result
+
+
+def get_ast_source_segment(source, node):
+    # Adapted from https://github.com/python/cpython/blob/3.8/Lib/ast.py
+    try:
+        start = node.start - 1
+        end = node.end - 1
+        start_offset = node.col_offset
+        end_offset = node.end_col_offset
+    except AttributeError:
+        return None
+
+    lines = ast._splitlines_no_ff(source)
+    if end == start:
+        return lines[start].encode()[start_offset:end_offset].decode()
+
+    segment = [lines[start].encode()[start_offset:].decode()]
+    segment.extend(lines[start + 1 : end])
+    segment.append(lines[end].encode()[:end_offset].decode())
+    return "".join(segment)
