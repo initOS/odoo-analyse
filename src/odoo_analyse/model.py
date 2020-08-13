@@ -3,6 +3,8 @@
 
 import ast
 
+from .utils import get_ast_source_segment
+
 
 class Field:
     def __init__(self, ttype, definition=None):
@@ -75,7 +77,7 @@ class Model:
                 return
 
             if f.value.id == "fields":
-                definition = ast.get_source_segment(content, value)
+                definition = get_ast_source_segment(content, value)
                 self.fields[assign] = Field("fields.%s" % f.attr, definition)
 
     def to_json(self):
