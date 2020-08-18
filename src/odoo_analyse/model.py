@@ -73,7 +73,7 @@ class Model:
                 self.fields.update({k: Field("fields.Many2one") for k in inhs.values()})
         elif isinstance(value, ast.Call):
             f = value.func
-            if not isinstance(f, ast.Attribute):
+            if not isinstance(f, ast.Attribute) or not isinstance(f.value, ast.Name):
                 return
 
             if f.value.id == "fields":
