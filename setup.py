@@ -16,7 +16,7 @@ setup(
     description="Package to analyse odoo modules",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
-    license="AGPL-3.0",
+    license="LGPL-3.0",
     keywords="odoo, modules, analyze, dependency, graph",
     url="https://github.com/initOS/odoo-analyse",
     packages=find_packages("src"),
@@ -33,7 +33,7 @@ setup(
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)",
         "Topic :: Software Development",
     ],
 )
