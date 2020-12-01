@@ -56,22 +56,26 @@ def parse_args():
     group.add_argument(
         "--path-filter",
         default="*",
-        help="Filter out modules which paths aren't matching the glob",
+        help="Filter out modules which paths aren't matching the glob. "
+        "Separate multiple filters by comma",
     )
     group.add_argument(
         "--models",
         default="*",
-        help="Filter out models which names aren't matching the glob",
+        help="Filter out models which names aren't matching the glob. "
+        "Separate multiple filters by comma",
     )
     group.add_argument(
         "--modules",
         default="*",
-        help="Filter out modules which names aren't matching the glob",
+        help="Filter out modules which names aren't matching the glob. "
+        "Separate multiple filters by comma",
     )
     group.add_argument(
         "--views",
         default="*",
-        help="Filter out views which names aren't matching the glob",
+        help="Filter out views which names aren't matching the glob. "
+        "Separate multiple filters by comma",
     )
     group.add_argument(
         "--test-filter",

@@ -8,14 +8,19 @@ from configparser import ConfigParser
 from fnmatch import fnmatch
 from functools import reduce
 
+from .module import Module
+
 try:
     from graphviz import Digraph, Graph
 except ImportError:
     Digraph = Graph = None
 
-from .module import Module
 
 _logger = logging.getLogger(__name__)
+
+
+def match(s, patterns):
+    return any(fnmatch(s, x) for x in patterns.split(","))
 
 
 class Odoo:
@@ -24,6 +29,7 @@ class Odoo:
         self.full = modules or {}
         self.modules = modules or {}
         self.filters = filters or []
+        self.show_full_dependency = False
 
     @classmethod
     def from_config(cls, config_path):
@@ -109,15 +115,13 @@ class Odoo:
     def path_filter(self, pattern):
         _logger.debug("Applying filter: path [%s]", pattern)
         self.modules = {
-            name: module
-            for name, module in self.items()
-            if fnmatch(module.path, pattern)
+            name: module for name, module in self.items() if match(module.path, pattern)
         }
 
     def name_filter(self, pattern):
         _logger.debug("Applying filter: name [%s]", pattern)
         self.modules = {
-            name: module for name, module in self.items() if fnmatch(name, pattern)
+            name: module for name, module in self.items() if match(name, pattern)
         }
 
     def load(self, config_path):
@@ -253,7 +257,7 @@ class Odoo:
             visible = set(graph)
 
         # Show all dependency ignoring the filters
-        if self.opt("odoo.show_full_dependency"):
+        if self.opt("odoo.show_full_dependency") or self.show_full_dependency:
             nodes = list(visible)
             visited = set()
             while nodes:
@@ -329,7 +333,7 @@ class Odoo:
             output.edge(module_id, view_id)
 
         for module_name, module in self.items():
-            if not fnmatch(module_name, modules):
+            if not match(module_name, modules):
                 continue
 
             module_id = module_name
@@ -338,11 +342,11 @@ class Odoo:
             )
 
             for model_name, model in module.models.items():
-                if fnmatch(model_name, models):
+                if match(model_name, models):
                     render_model(module_id, model_name, model)
 
             for view_name, view in module.views.items():
-                if fnmatch(view_name, views):
+                if match(view_name, views):
                     render_view(module_id, view_name, view)
 
         self._show_output(output, filename=filename or "structure.gv")
@@ -388,7 +392,7 @@ class Odoo:
         loop_color = self.opt("module.loop_color", "red")
 
         def check_node(node):
-            return fnmatch(node, modules)
+            return match(node, modules)
 
         # Coloring functions
         def color_node(node):
@@ -429,7 +433,7 @@ class Odoo:
         loop_color = self.opt("model.loop_color", "red")
 
         def check_node(node):
-            return fnmatch(node, models)
+            return match(node, models)
 
         # Coloring functions
         def color_node(node):
@@ -466,7 +470,7 @@ class Odoo:
         loop_color = self.opt("view.loop_color", "red")
 
         def check_node(node):
-            return fnmatch(node, views)
+            return match(node, views)
 
         # Coloring functions
         def color_node(node):
