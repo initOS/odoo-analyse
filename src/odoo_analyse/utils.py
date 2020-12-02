@@ -61,7 +61,7 @@ def hexhash_files(files, folder):
             hashsum = "-"
 
         rel_path = os.path.relpath(f, folder) if f.startswith(folder) else f
-        hashes.append(f"{hashsum} {rel_path}")
+        hashes.append("%s %s" % (hashsum, rel_path))
     return hexhash("\n".join(hashes))
 
 
@@ -82,7 +82,7 @@ def fix_indentation(filepath):
                     result = True
                 else:
                     break
-            fp.write(f"{left}{line.strip()}\n")
+            fp.write("%s%s\n" % (left, line.strip()))
 
     return result
 
