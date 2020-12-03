@@ -293,7 +293,7 @@ class Odoo:
         self._show_output(output, filename=filename)
 
     def _show_output(self, graph, filename):
-        graph.view(filename=filename)
+        graph.render(filename=filename)
 
     def show_structure_graph(
         self, modules="*", models="*", views="*", fields=True, filename=None
