@@ -1,6 +1,6 @@
 import os
 import tempfile
-from unittest import mock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from odoo_analyse import Odoo
@@ -62,6 +62,7 @@ def test_odoo_config():
 
 def test_odoo_analyse(odoo):
     odoo.analyse("-")
+    odoo.analyse("-", out_format="csv")
 
 
 def test_odoo_json(odoo):
@@ -90,9 +91,23 @@ def test_odoo_filters(odoo):
     odoo.path_filter("testing/*")
     assert not odoo
 
+    db = MagicMock()
+    with patch("odoo_analyse.odoo.connect", return_value=db) as mock:
+        odoo.modules["abc"] = odoo.modules["def"] = module
+        cr = db.__enter__.return_value = MagicMock()
+        cur = cr.cursor.return_value = MagicMock()
+        cur.fetchall.return_value = [("def",)]
+        odoo.state_filter()
+
+        mock.assert_called_once()
+        cr.cursor.assert_called_once()
+
+        cur.execute.assert_called_once()
+        assert len(odoo) == 1
+
 
 def test_odoo_run_graph(odoo):
-    o.Graph = o.Digraph = mock.MagicMock()
+    o.Graph = o.Digraph = MagicMock()
     odoo.set_opt("odoo.show_full_dependency", True)
     odoo.show_structure_graph()
     odoo.show_module_graph()

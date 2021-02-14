@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name="odoo-analyse",
-    version="0.9.4",
+    version="1.0.0",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",
@@ -24,9 +24,9 @@ setup(
     package_name="odoo-analyse",
     include_package_data=True,
     entry_points={"console_scripts": ["odoo_analyse = odoo_analyse.main:main"]},
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
+    python_requires=">=3.5",
     install_requires=["2to3", "cloc", "lxml"],
-    extras_require={"graph": ["graphviz"]},
+    extras_require={"graph": ["graphviz", "psycopg2"]},
     project_urls={
         "Documentation": "https://github.com/initOS/odoo-analyse/blob/master/README.md",
         "Usage": "https://odoo-code-search.com",

@@ -1,9 +1,11 @@
 # © 2020 initOS GmbH
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
+import csv
 import json
 import logging
 import os
+import sys
 from configparser import ConfigParser
 from fnmatch import fnmatch
 from functools import reduce
@@ -14,6 +16,11 @@ try:
     from graphviz import Digraph, Graph
 except ImportError:
     Digraph = Graph = None
+
+try:
+    from psycopg2 import connect
+except ImportError:
+    connect = None
 
 
 _logger = logging.getLogger(__name__)
@@ -105,6 +112,7 @@ class Odoo:
         return res
 
     def test_filter(self):
+        """ Filter out modules starting with test_ """
         _logger.debug("Applying filter: test")
         self.modules = {
             name: module
@@ -113,16 +121,69 @@ class Odoo:
         }
 
     def path_filter(self, pattern):
+        """ Filter the modules using their paths """
         _logger.debug("Applying filter: path [%s]", pattern)
         self.modules = {
             name: module for name, module in self.items() if match(module.path, pattern)
         }
 
     def name_filter(self, pattern):
+        """ Filter the modules using their names """
         _logger.debug("Applying filter: name [%s]", pattern)
         self.modules = {
             name: module for name, module in self.items() if match(name, pattern)
         }
+
+    def state_filter(self, config_path=None, state="installed", **kwargs):
+        """ Filter the modules by their states in a database """
+
+        def adapt(val):
+            if val.lower() in ("false", "none", ""):
+                return None
+            try:
+                return int(val)
+            except ValueError:
+                return val
+
+        args = {
+            "host": None,
+            "database": None,
+            "user": None,
+            "password": None,
+            "port": None,
+        }
+
+        # Load the database connection from a configuration file
+        if config_path:
+            cp = ConfigParser()
+            cp.read(config_path)
+
+            args.update(
+                {
+                    "host": adapt(cp.get("options", "db_host", fallback=None)),
+                    "port": adapt(cp.get("options", "db_port", fallback=None)),
+                    "database": adapt(cp.get("options", "db_name", fallback=None)),
+                    "user": adapt(cp.get("options", "db_user", fallback=None)),
+                    "password": adapt(cp.get("options", "db_password", fallback=None)),
+                }
+            )
+
+        # Overwrite if parameters are specified manually
+        args.update((k, v) for k, v in kwargs.items() if k in args and v)
+
+        # Clear the arguments a bit. Without password assumes a local database
+        args = {k: v for k, v in args.items() if v}
+        if "password" not in args:
+            args.pop("host", None)
+
+        # Connect to the database and fetch the modules in the given state
+        with connect(**args) as db:
+            cr = db.cursor()
+            cr.execute("SELECT name FROM ir_module_module WHERE state = %s", (state,))
+            names = {row[0] for row in cr.fetchall()}
+
+        # Apply the filter
+        self.modules = {name: module for name, module in self.items() if name in names}
 
     def load(self, config_path):
         _logger.debug("Reading odoo configuration file")
@@ -157,11 +218,12 @@ class Odoo:
             banner = ["%s: %s" % pair for pair in sorted(local_vars.items())]
             interact("\n".join(banner), local=local_vars)
 
-    def analyse(self, file_path):
+    def analyse(self, file_path, out_format="json"):
+        """ Return some analyse data about every module """
         _logger.debug("Start analysing...")
         models = {
             mname: name
-            for name, module in self.full.items()
+            for name, module in self.items()
             for mname, model in module.models.items()
             if not model.inherit and not model.inherits
         }
@@ -187,16 +249,62 @@ class Odoo:
                 "imports": sorted(module.imports),
                 "model_count": len(module.models),
                 "refers": sorted(used),
+                "path": module.path,
+                "language": {k: v["lines"] for k, v in module.language.items()},
+                "license": module.license,
+                "author": module.author,
+                "category": module.category,
+                "version": module.version,
+                "status": list(module.status),
             }
             if missing:
                 _logger.error("Missing dependency: %s -> %s", name, missing)
                 res[name]["missing_dependency"] = sorted(missing)
 
+        if out_format == "csv":
+            self._analyse_out_csv(res, file_path)
+        else:
+            self._analyse_out_json(res, file_path)
+
+    def _analyse_out_csv(self, data, file_path):
+        """ Output the analyse result as CSV """
         if file_path == "-":
-            print(json.dumps(res, indent=2))
+            fp = sys.stdout
+        else:
+            fp = open(file_path, "w+")
+
+        fields = {"name"}
+        rows = []
+
+        for name, module in data.items():
+            tmp = {"name": name}
+            for key, value in module.items():
+                if isinstance(value, dict):
+                    for k, v in value.items():
+                        tmp["%s/%s" % (key, k)] = v
+                elif isinstance(value, list):
+                    tmp[key] = ",".join(value)
+                else:
+                    tmp[key] = str(value)
+
+                fields.update(tmp)
+                rows.append(tmp)
+
+        writer = csv.DictWriter(fp, sorted(fields))
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+    def _analyse_out_json(self, data, file_path):
+        """ Output the analyse result as JSON """
+        content = json.dumps(data, indent=2)
+
+        # Write to a file or stdout
+        if file_path == "-":
+            print(content)
         else:
             with open(file_path, "w+") as fp:
-                json.dump(res, fp, indent=2)
+                fp.write(content)
 
     def load_path(self, paths, depth=None):
         if isinstance(paths, str):
