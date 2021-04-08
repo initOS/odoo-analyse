@@ -7,12 +7,30 @@ import glob
 import logging
 import os
 import sys
-
-import graphviz
+from getpass import getpass
 
 from .odoo import Odoo
 
+try:
+    import graphviz
+except ImportError:
+    graphviz = None
+
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
+
 _logger = logging.getLogger(__name__)
+
+
+def ensure_module(name, module):
+    """ Exit if module isn't installed """
+    if module is None:
+        print("Python module %s isn't installed" % name)
+        sys.exit(1)
 
 
 def parse_args():
@@ -83,6 +101,28 @@ def parse_args():
         default=False,
         help="Include testing modules starting with test_",
     )
+    group.add_argument(
+        "--state-filter",
+        action="store_true",
+        default=False,
+        help="Filter modules by their state in a database. The connection information "
+        "can be used for a configuration file or directly passed.",
+    )
+
+    if psycopg2:
+        group = parser.add_argument_group("Database")
+        group.add_argument("--db_host", default=None, help="The database host")
+        group.add_argument(
+            "--db_port", default=None, type=int, help="The database port"
+        )
+        group.add_argument("--db_user", default=None, help="The database user")
+        group.add_argument(
+            "--db_password",
+            default=False,
+            action="store_true",
+            help="Ask for the database password",
+        )
+        group.add_argument("--db_name", default=None, help="The name of the database")
 
     group = parser.add_argument_group(
         "Module graphs",
@@ -155,18 +195,25 @@ def parse_args():
     )
 
     group = parser.add_argument_group("Stucture graph")
-    group.add_argument(
-        "--structure-graph",
-        action="store_true",
-        default=False,
-        help="Show the structure of the modules",
-    )
+    if graphviz:
+        group.add_argument(
+            "--structure-graph",
+            action="store_true",
+            default=False,
+            help="Show the structure of the modules",
+        )
 
     group = parser.add_argument_group("Misc")
     group.add_argument(
         "--analyse",
         default="",
         help="Analyse the modules and store it in the given file",
+    )
+    group.add_argument(
+        "--analyse-output",
+        default="json",
+        choices=("csv", "json"),
+        help="The format the analyse will use. Default is %(default)s",
     )
     group.add_argument(
         "-i",
@@ -183,11 +230,12 @@ def parse_args():
         default=False,
         help="Show the full graph and only use the filters for the starting nodes",
     )
-    group.add_argument(
-        "--renderer",
-        default="dot",
-        help="Specify the rendering engine. %s" % graphviz.ENGINES,
-    )
+    if graphviz:
+        group.add_argument(
+            "--renderer",
+            default="dot",
+            help="Specify the rendering engine. %s" % graphviz.ENGINES,
+        )
 
     return parser.parse_args()
 
@@ -202,7 +250,7 @@ def main():
     logger.addHandler(handler)
 
     # Load modules
-    if args.config:
+    if args.config and not args.load:
         odoo = Odoo.from_config(args.config)
     else:
         odoo = Odoo()
@@ -225,7 +273,7 @@ def main():
     if args.full_graph:
         odoo.show_full_dependency = True
 
-    if args.renderer in graphviz.ENGINES:
+    if graphviz and args.renderer in graphviz.ENGINES:
         odoo.set_opt("odoo.engine", args.renderer)
 
     # Apply the filters
@@ -233,11 +281,23 @@ def main():
         odoo.test_filter()
     odoo.path_filter(args.path_filter)
 
+    if args.state_filter:
+        ensure_module("psycopg2", psycopg2)
+        odoo.state_filter(
+            args.config,
+            host=args.db_host,
+            database=args.db_name,
+            user=args.db_user,
+            port=args.db_port,
+            password=getpass() if args.db_password else None,
+        )
+
     if args.analyse:
-        odoo.analyse(args.analyse)
+        odoo.analyse(args.analyse, out_format=args.analyse_output)
 
     # Render the module graph if needed
     if args.show_dependency or args.show_import or args.show_reference:
+        ensure_module("graphviz", graphviz)
         odoo.show_module_graph(
             args.modules,
             args.migration,
@@ -248,10 +308,12 @@ def main():
 
     # Render the structure graph
     if args.structure_graph:
+        ensure_module("graphviz", graphviz)
         odoo.show_structure_graph(args.modules, args.models, args.views)
 
     # Render the model graph
     if args.model_graph:
+        ensure_module("graphviz", graphviz)
         odoo.show_model_graph(
             args.models,
             inherit=not args.no_model_inherit,
@@ -260,6 +322,7 @@ def main():
 
     # Render the view graph
     if args.view_graph:
+        ensure_module("graphviz", graphviz)
         odoo.show_view_graph(
             args.views, inherit=not args.no_view_inherit, calls=not args.no_view_call,
         )

@@ -7,7 +7,7 @@ Analyse tool for odoo modules
 Install the module with the ability to render graphs:
 ```
 $ apt install cloc graphviz
-$ pip install "odoo-analyse[graph]"
+$ pip3 install "odoo-analyse[graph]"
 ```
 
 ## Usage
@@ -38,6 +38,8 @@ $ pip install "odoo-analyse[graph]"
 
 `--test-filter` .. Include module starting with `test_`
 
+`--state-filter` .. Only modules with a specific state. This connects to a database to determine the state of a module. The connection information are extracted from a configuration file or using the database parameters
+
 ### Module graph
 
 Use atleast one of the following `--show-*` options to show a module graph.
@@ -50,3 +52,17 @@ Use atleast one of the following `--show-*` options to show a module graph.
 
 `--migration '*'` .. Color all modules with a matching version
 
+
+### Database
+
+These options can be used to extract instance specific information about modules such as installation state to be used in filters.
+
+`--db-host host` .. Host on which the database is running
+
+`--db-port 5432` .. Port on which the database is running
+
+`--db-name odoo` .. Name of the database
+
+`--db-user user` .. Name of the user to access the database
+
+`--db-password` .. If specified a password prompt will ask for the password to connect to the database
