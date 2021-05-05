@@ -112,7 +112,7 @@ class Odoo:
         return res
 
     def test_filter(self):
-        """ Filter out modules starting with test_ """
+        """Filter out modules starting with test_"""
         _logger.debug("Applying filter: test")
         self.modules = {
             name: module
@@ -121,21 +121,21 @@ class Odoo:
         }
 
     def path_filter(self, pattern):
-        """ Filter the modules using their paths """
+        """Filter the modules using their paths"""
         _logger.debug("Applying filter: path [%s]", pattern)
         self.modules = {
             name: module for name, module in self.items() if match(module.path, pattern)
         }
 
     def name_filter(self, pattern):
-        """ Filter the modules using their names """
+        """Filter the modules using their names"""
         _logger.debug("Applying filter: name [%s]", pattern)
         self.modules = {
             name: module for name, module in self.items() if match(name, pattern)
         }
 
     def state_filter(self, config_path=None, state="installed", **kwargs):
-        """ Filter the modules by their states in a database """
+        """Filter the modules by their states in a database"""
 
         def adapt(val):
             if val.lower() in ("false", "none", ""):
@@ -219,7 +219,7 @@ class Odoo:
             interact("\n".join(banner), local=local_vars)
 
     def analyse(self, file_path, out_format="json"):
-        """ Return some analyse data about every module """
+        """Return some analyse data about every module"""
         _logger.debug("Start analysing...")
         models = {
             mname: name
@@ -267,7 +267,7 @@ class Odoo:
             self._analyse_out_json(res, file_path)
 
     def _analyse_out_csv(self, data, file_path):
-        """ Output the analyse result as CSV """
+        """Output the analyse result as CSV"""
         if file_path == "-":
             fp = sys.stdout
         else:
@@ -287,8 +287,8 @@ class Odoo:
                 else:
                     tmp[key] = str(value)
 
-                fields.update(tmp)
-                rows.append(tmp)
+            fields.update(tmp)
+            rows.append(tmp)
 
         writer = csv.DictWriter(fp, sorted(fields))
         writer.writeheader()
@@ -296,7 +296,7 @@ class Odoo:
             writer.writerow(row)
 
     def _analyse_out_json(self, data, file_path):
-        """ Output the analyse result as JSON """
+        """Output the analyse result as JSON"""
         content = json.dumps(data, indent=2)
 
         # Write to a file or stdout
@@ -342,7 +342,12 @@ class Odoo:
         return {(a, b) for a, bs in graph.items() for b in bs}
 
     def _show_graph(
-        self, graph, node_check=None, color_node=None, color_edge=None, filename=None,
+        self,
+        graph,
+        node_check=None,
+        color_node=None,
+        color_edge=None,
+        filename=None,
     ):
         if not graph:
             return
@@ -446,7 +451,10 @@ class Odoo:
 
             module_id = module_name
             output.node(
-                module_id, label=module_name, color=module_color, shape=module_shape,
+                module_id,
+                label=module_name,
+                color=module_color,
+                shape=module_shape,
             )
 
             for model_name, model in module.models.items():
@@ -519,7 +527,11 @@ class Odoo:
 
         # Show the resulting graph
         self._show_graph(
-            graph, check_node, color_node, color_edge, filename=filename or "module.gv",
+            graph,
+            check_node,
+            color_node,
+            color_edge,
+            filename=filename or "module.gv",
         )
 
     def show_model_graph(self, models="*", inherit=True, inherits=True, filename=None):
