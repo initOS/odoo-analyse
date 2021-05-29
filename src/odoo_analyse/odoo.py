@@ -268,10 +268,7 @@ class Odoo:
 
     def _analyse_out_csv(self, data, file_path):
         """Output the analyse result as CSV"""
-        if file_path == "-":
-            fp = sys.stdout
-        else:
-            fp = open(file_path, "w+")
+        fp = sys.stdout if file_path == "-" else open(file_path, "w+")
 
         fields = {"name"}
         rows = []
@@ -297,14 +294,9 @@ class Odoo:
 
     def _analyse_out_json(self, data, file_path):
         """Output the analyse result as JSON"""
-        content = json.dumps(data, indent=2)
-
         # Write to a file or stdout
-        if file_path == "-":
-            print(content)
-        else:
-            with open(file_path, "w+") as fp:
-                fp.write(content)
+        fp = sys.stdout if file_path == "-" else open(file_path, "w+")
+        json.dump(data, fp, indent=2)
 
     def load_path(self, paths, depth=None):
         if isinstance(paths, str):
@@ -316,15 +308,15 @@ class Odoo:
         self.modules = result.copy()
 
     def load_json(self, filename):
-        with open(filename) as fp:
-            data = json.load(fp)
+        fp = sys.stdin if filename == "-" else open(filename)
+        data = json.load(fp)
 
-            self.modules = {k: Module.from_json(v) for k, v in data.items()}
-            self.full = self.modules.copy()
+        self.modules = {k: Module.from_json(v) for k, v in data.items()}
+        self.full = self.modules.copy()
 
     def save_json(self, filename):
-        with open(filename, "w+") as fp:
-            json.dump({k: m.to_json() for k, m in self.full.items()}, fp)
+        fp = sys.stdout if filename == "-" else open(filename, "w+")
+        json.dump({k: m.to_json() for k, m in self.full.items()}, fp)
 
     def _find_edges_in_loop(self, graph):
         # Eliminate not referenced and not referring modules

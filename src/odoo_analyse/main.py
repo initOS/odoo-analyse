@@ -64,10 +64,16 @@ def parse_args():
         help="Specify a path to search for odoo modules",
     )
     group.add_argument(
-        "-l", "--load", default=False, help="Load from a json file",
+        "-l",
+        "--load",
+        default=False,
+        help="Load from a json file. To read the data from the stdin you can use `-`",
     )
     group.add_argument(
-        "-s", "--save", default=False, help="Save to a json file",
+        "-s",
+        "--save",
+        default=False,
+        help="Save to a json file. To write the data to the stdout you can use `-`",
     )
 
     group = parser.add_argument_group("Filters")
@@ -207,7 +213,8 @@ def parse_args():
     group.add_argument(
         "--analyse",
         default="",
-        help="Analyse the modules and store it in the given file",
+        help="Analyse the modules and store it in the given file. "
+        "To output to the stdout you can use `-`",
     )
     group.add_argument(
         "--analyse-output",
@@ -324,7 +331,9 @@ def main():
     if args.view_graph:
         ensure_module("graphviz", graphviz)
         odoo.show_view_graph(
-            args.views, inherit=not args.no_view_inherit, calls=not args.no_view_call,
+            args.views,
+            inherit=not args.no_view_inherit,
+            calls=not args.no_view_call,
         )
 
 
