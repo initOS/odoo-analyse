@@ -250,7 +250,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    handler = logging.StreamHandler(sys.stdout)
+    handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter("%(message)s"))
 
     logger = logging.getLogger()
