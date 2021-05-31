@@ -22,6 +22,8 @@ $ pip3 install "odoo-analyse[graph]"
 
 `--load /path/to/data.json` .. Load the modules from a previously stored data file
 
+`--load /path/to/data.json -` .. Loads the data from the module analysis directly from the `stdout` thanks to the "-"
+
 ### Save the loaded modules
 
 `-s /path/to/data.json` .. Store the loaded modules in a file
@@ -29,11 +31,6 @@ $ pip3 install "odoo-analyse[graph]"
 Or if you want to output it to `stdout`:
 
 `-s -` .. Outputs the loaded modules to stdout
-
-### Loading files
-`-l /path/to/data.json` .. Loads the JSON data from a file which you can use for detailed analysis/graphs.
-This serves as a cache-like system to analyse repositories or Odoo installations by first saving the data into a file and then reusing it.
-
 
 ### Filtering
 
