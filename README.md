@@ -26,6 +26,11 @@ $ pip3 install "odoo-analyse[graph]"
 
 `-s /path/to/data.json` .. Store the loaded modules in a file
 
+Or if you want to output it to `stdin`:
+
+`-s -` .. Outputs the loaded modules to stdin
+
+
 ### Filtering
 
 `--modules '*'` .. Only show modules with a matching name
@@ -66,3 +71,15 @@ These options can be used to extract instance specific information about modules
 `--db-user user` .. Name of the user to access the database
 
 `--db-password` .. If specified a password prompt will ask for the password to connect to the database
+
+### Importing the package
+If you'd like to import the package and use it within a Odoo module you can add it as an import and call the options:
+```
+from odoo_analyse import Odoo
+
+odoo = Odoo.from_path(".")
+odoo["auth_session_timeout"].models
+# Gives back something like: {'ir.http': <Model: ir.http>, 'ir.config_parameter': <Model: ir.config_parameter>, 'res.users': <Model: res.users>}
+odoo["auth_session_timeout"].manifest
+# Gives back something like: {"auth_session_timeout: {"path": "/x/y/z", "name": "auth_session_timeout", ...}}
+```
