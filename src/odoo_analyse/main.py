@@ -109,7 +109,6 @@ def parse_args():
     )
     group.add_argument(
         "--state-filter",
-        action="store_true",
         default=False,
         help="Filter modules by their state in a database. The connection information "
         "can be used for a configuration file or directly passed.",
@@ -292,6 +291,7 @@ def main():
         ensure_module("psycopg2", psycopg2)
         odoo.state_filter(
             args.config,
+            state=args.state_filter,
             host=args.db_host,
             database=args.db_name,
             user=args.db_user,
