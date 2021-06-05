@@ -137,6 +137,8 @@ class Odoo:
     def state_filter(self, config_path=None, state="installed", **kwargs):
         """Filter the modules by their states in a database"""
 
+        _logger.debug("Applying filter: state [%s]", state)
+
         def adapt(val):
             if val.lower() in ("false", "none", ""):
                 return None

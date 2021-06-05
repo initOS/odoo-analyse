@@ -231,6 +231,12 @@ def parse_args():
 
     group = parser.add_argument_group("Options")
     group.add_argument(
+        "--verbose",
+        default=False,
+        action="store_true",
+        help="Be verbose",
+    )
+    group.add_argument(
         "--full-graph",
         action="store_true",
         default=False,
@@ -254,6 +260,9 @@ def main():
 
     logger = logging.getLogger()
     logger.addHandler(handler)
+
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
 
     # Load modules
     if args.config and not args.load:

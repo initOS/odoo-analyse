@@ -61,11 +61,14 @@ class Model:
         if assign == "_name":
             self.name = ast.literal_eval(value)
         elif assign == "_inherit":
-            value = ast.literal_eval(value)
-            if isinstance(value, list):
-                self.inherit.update(value)
-            else:
-                self.inherit.add(value)
+            if isinstance(value, ast.Name) and value.id == "_name":
+                self.inherit.add(self.name)
+            elif not isinstance(value, ast.Name):
+                value = ast.literal_eval(value)
+                if isinstance(value, list):
+                    self.inherit.update(value)
+                else:
+                    self.inherit.add(value)
         elif assign == "_inherits":
             inhs = ast.literal_eval(value)
             if isinstance(inhs, dict):
