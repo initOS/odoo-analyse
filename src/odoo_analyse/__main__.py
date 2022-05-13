@@ -27,7 +27,7 @@ _logger = logging.getLogger(__name__)
 
 
 def ensure_module(name, module):
-    """ Exit if module isn't installed """
+    """Exit if module isn't installed"""
     if module is None:
         print("Python module %s isn't installed" % name)
         sys.exit(1)
@@ -114,20 +114,17 @@ def parse_args():
         "can be used for a configuration file or directly passed.",
     )
 
-    if psycopg2:
-        group = parser.add_argument_group("Database")
-        group.add_argument("--db_host", default=None, help="The database host")
-        group.add_argument(
-            "--db_port", default=None, type=int, help="The database port"
-        )
-        group.add_argument("--db_user", default=None, help="The database user")
-        group.add_argument(
-            "--db_password",
-            default=False,
-            action="store_true",
-            help="Ask for the database password",
-        )
-        group.add_argument("--db_name", default=None, help="The name of the database")
+    group = parser.add_argument_group("Database")
+    group.add_argument("--db_host", default=None, help="The database host")
+    group.add_argument("--db_port", default=None, type=int, help="The database port")
+    group.add_argument("--db_user", default=None, help="The database user")
+    group.add_argument(
+        "--db_password",
+        default=False,
+        action="store_true",
+        help="Ask for the database password",
+    )
+    group.add_argument("--db_name", default=None, help="The name of the database")
 
     group = parser.add_argument_group(
         "Module graphs",
@@ -154,7 +151,7 @@ def parse_args():
     )
     group.add_argument(
         "--migration",
-        default="*",
+        default=False,
         help="Color the migration status in the module graph. "
         "Must be a glob which matches all migrated versions",
     )
@@ -200,13 +197,12 @@ def parse_args():
     )
 
     group = parser.add_argument_group("Stucture graph")
-    if graphviz:
-        group.add_argument(
-            "--structure-graph",
-            action="store_true",
-            default=False,
-            help="Show the structure of the modules",
-        )
+    group.add_argument(
+        "--structure-graph",
+        action="store_true",
+        default=False,
+        help="Show the structure of the modules",
+    )
 
     group = parser.add_argument_group("Misc")
     group.add_argument(
@@ -242,12 +238,11 @@ def parse_args():
         default=False,
         help="Show the full graph and only use the filters for the starting nodes",
     )
-    if graphviz:
-        group.add_argument(
-            "--renderer",
-            default="dot",
-            help="Specify the rendering engine. %s" % graphviz.ENGINES,
-        )
+    group.add_argument(
+        "--renderer",
+        default="dot",
+        help="Specify the rendering engine. %s" % graphviz.ENGINES,
+    )
 
     return parser.parse_args()
 
@@ -288,7 +283,7 @@ def main():
     if args.full_graph:
         odoo.show_full_dependency = True
 
-    if graphviz and args.renderer in graphviz.ENGINES:
+    if args.renderer in graphviz.ENGINES:
         odoo.set_opt("odoo.engine", args.renderer)
 
     # Apply the filters

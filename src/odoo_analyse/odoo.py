@@ -306,8 +306,8 @@ class Odoo:
 
         result = Module.find_modules(paths, depth=depth)
 
-        self.full = result.copy()
-        self.modules = result.copy()
+        self.full.update(result.copy())
+        self.modules.update(result.copy())
 
     def load_json(self, filename):
         fp = sys.stdin if filename == "-" else open(filename)
@@ -364,6 +364,7 @@ class Odoo:
             visible = set(graph)
 
         # Show all dependency ignoring the filters
+        highlight = set()
         if self.opt("odoo.show_full_dependency") or self.show_full_dependency:
             nodes = list(visible)
             visited = set()
@@ -377,16 +378,30 @@ class Odoo:
                 visible.update(depends)
                 nodes.extend(depends)
 
+            # Extend the auto install
+            current, previous = len(visible), None
+            while current != previous:
+                for name, module in self.full.items():
+                    if (
+                        module.auto_install
+                        and module.depends.issubset(visible)
+                        and name not in visible
+                    ):
+                        visible.add(name)
+                        highlight.add(name)
+                current, previous = len(visible), current
+
         if not visible:
             return
 
         output = Digraph(engine=self.opt("odoo.engine", "dot"))
         for name in visible:
             depends = graph[name]
+            style = "dashed" if name in highlight else None
             if callable(color_node):
-                output.node(name, color=color_node(name))
+                output.node(name, color=color_node(name), style=style)
             else:
-                output.node(name)
+                output.node(name, style=style)
 
             for dep in depends:
                 if dep not in visible:
@@ -461,6 +476,19 @@ class Odoo:
 
         self._show_output(output, filename=filename or "structure.gv")
 
+    def _build_module_graph(self, depends, imports, refers):
+        graph = {}
+        for name, module in self.items():
+            graph[name] = set()
+            if depends:
+                graph[name].update(module.depends)
+            if imports:
+                graph[name].update(module.imports)
+            if refers:
+                graph[name].update(module.refers)
+
+        return graph
+
     def show_module_graph(
         self,
         modules="*",
@@ -471,15 +499,7 @@ class Odoo:
         filename=None,
     ):
         # Build the dependency graph
-        graph = {}
-        for name, module in self.items():
-            graph[name] = set()
-            if depends:
-                graph[name].update(module.depends)
-            if imports:
-                graph[name].update(module.imports)
-            if refers:
-                graph[name].update(module.refers)
+        graph = self._build_module_graph(depends, imports, refers)
 
         # Detect loops
         loop_edges = self._find_edges_in_loop(graph)

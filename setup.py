@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name="odoo-analyse",
-    version="1.1.2",
+    version="1.2",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",
@@ -23,7 +23,7 @@ setup(
     package_dir={"": "src"},
     package_name="odoo-analyse",
     include_package_data=True,
-    entry_points={"console_scripts": ["odoo_analyse = odoo_analyse.main:main"]},
+    entry_points={"console_scripts": ["odoo_analyse = odoo_analyse.__main__:main"]},
     python_requires=">=3.5",
     install_requires=["2to3", "cloc", "lxml"],
     extras_require={"graph": ["graphviz", "psycopg2"]},

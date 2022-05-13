@@ -1,2 +1,2 @@
 [run]
-omit = */main.py
+omit = */__main__.py

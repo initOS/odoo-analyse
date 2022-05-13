@@ -25,7 +25,7 @@ def call(cmd, cwd=None):
 
 
 def stopwords(words=None):
-    """ Returns or stores the stopword set """
+    """Returns or stores the stopword set"""
     if words:
         stopwords.words = words
         return words
@@ -35,7 +35,7 @@ def stopwords(words=None):
 
 
 def folder_blacklist(blacklist=None):
-    """ Returns or stores the folder blacklist """
+    """Returns or stores the folder blacklist"""
     if blacklist:
         folder_blacklist.blacklist = blacklist
         return blacklist
@@ -45,14 +45,14 @@ def folder_blacklist(blacklist=None):
 
 
 def hexhash(s):
-    """ Generates a hash and returns it as hex """
+    """Generates a hash and returns it as hex"""
     if not isinstance(s, bytes):
         s = s.encode()
     return hashlib.md5(s).hexdigest()
 
 
 def hexhash_files(files, folder):
-    """ Generates a hash for a list of files """
+    """Generates a hash for a list of files"""
     hashes = []
     for f in sorted(set(files)):
         if os.path.isfile(f):
@@ -66,7 +66,7 @@ def hexhash_files(files, folder):
 
 
 def fix_indentation(filepath):
-    """ Fixes the indentation of a file """
+    """Fixes the indentation of a file"""
     result = False
     with open(filepath, "r+") as fp:
         buf = fp.read()
@@ -88,21 +88,23 @@ def fix_indentation(filepath):
 
 
 def try_automatic_port(filepath):
-    """ Tries to port a python 2 script to python 3 using 2to3 """
+    """Tries to port a python 2 script to python 3 using 2to3"""
     cmd = shutil.which("2to3")
     if cmd is None:
         _logger.warning("Automatic porting needs 2to3 installed")
         return False
 
     proc = subprocess.Popen(
-        [cmd, "-n", "-w", filepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        [cmd, "-n", "-w", filepath],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     proc.communicate()
     return True
 
 
 def analyse_language(path):
-    """ Analyse the languages of a directory """
+    """Analyse the languages of a directory"""
     cmd = shutil.which("cloc")
     if cmd is None:
         _logger.warning("Language analyse needs cloc")

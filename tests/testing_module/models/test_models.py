@@ -28,7 +28,10 @@ class ResUsers(models.Model):
 
     new_boolean = fields.Boolean()
     new_m2o = fields.Many2one(
-        "res.partner", _get_default(), string="Label", default=_get_default + 1,
+        "res.partner",
+        _get_default(),
+        string="Label",
+        default=_get_default + 1,
     )
 
 

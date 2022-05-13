@@ -59,6 +59,9 @@ class Model:
 
         assign, value = assignments[0], obj.value
         if assign == "_name":
+            if not isinstance(value, ast.Constant):
+                return
+
             self.name = ast.literal_eval(value)
         elif assign == "_inherit":
             if isinstance(value, ast.Name) and value.id == "_name":

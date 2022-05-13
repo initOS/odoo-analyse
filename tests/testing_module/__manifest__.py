@@ -8,6 +8,9 @@
     "summary": "summary",
     "description": "description",
     "depends": ["base"],
-    "data": ["security/ir.model.access.csv", "views/test_model_views.xml",],
+    "data": [
+        "security/ir.model.access.csv",
+        "views/test_model_views.xml",
+    ],
     "installable": True,
 }

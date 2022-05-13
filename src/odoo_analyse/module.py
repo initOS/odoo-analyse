@@ -82,6 +82,10 @@ class Module:
         return self.manifest.get("installable", False)
 
     @property
+    def auto_install(self):
+        return self.manifest.get("auto_install", False)
+
+    @property
     def license(self):
         return self.manifest.get("license", "")
 
