@@ -313,7 +313,7 @@ class Odoo:
         fp = sys.stdin if filename == "-" else open(filename)
         data = json.load(fp)
 
-        self.modules = {k: Module.from_json(v) for k, v in data.items()}
+        self.modules.update({k: Module.from_json(v) for k, v in data.items()})
         self.full = self.modules.copy()
 
     def save_json(self, filename):

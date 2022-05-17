@@ -66,7 +66,8 @@ def parse_args():
     group.add_argument(
         "-l",
         "--load",
-        default=False,
+        default=[],
+        action="append",
         help="Load from a json file. To read the data from the stdin you can use `-`",
     )
     group.add_argument(
@@ -265,8 +266,8 @@ def main():
     else:
         odoo = Odoo()
 
-    if args.load:
-        odoo.load_json(args.load)
+    for load in args.load:
+        odoo.load_json(load)
 
     for p in args.path:
         odoo.load_path(glob.glob(os.path.abspath(os.path.expanduser(p))))

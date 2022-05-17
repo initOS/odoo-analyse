@@ -204,6 +204,9 @@ class Module:
             self.models[model.name] = model
 
     def _parse_python(self, path, filename):
+        if path + filename in self.files:
+            return
+
         obj = self._load_python(path, filename)
 
         with open(os.path.join(path, filename)) as fp:
