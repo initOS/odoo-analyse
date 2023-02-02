@@ -4,7 +4,7 @@
 from .model import Model
 from .module import Module
 from .odoo import Odoo
+from .record import Record, View
 from .utils import folder_blacklist, stopwords
-from .view import View
 
 __all__ = ["Model", "Module", "Odoo", "folder_blacklist", "stopwords", "View"]

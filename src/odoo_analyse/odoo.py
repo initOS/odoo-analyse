@@ -217,7 +217,7 @@ class Odoo:
         except ImportError:
             from code import interact
 
-            banner = ["%s: %s" % pair for pair in sorted(local_vars.items())]
+            banner = [f"{name}: {obj}" for name, obj in sorted(local_vars.items())]
             interact("\n".join(banner), local=local_vars)
 
     def analyse(self, file_path, out_format="json"):
@@ -245,7 +245,7 @@ class Odoo:
             missing.discard("base")
 
             res[name] = {
-                "data_count": module.data,
+                "record_count": len(module.records),
                 "depends": sorted(module.depends),
                 "fields": fields,
                 "imports": sorted(module.imports),
@@ -270,8 +270,6 @@ class Odoo:
 
     def _analyse_out_csv(self, data, file_path):
         """Output the analyse result as CSV"""
-        fp = sys.stdout if file_path == "-" else open(file_path, "w+")
-
         fields = {"name"}
         rows = []
 
@@ -280,7 +278,7 @@ class Odoo:
             for key, value in module.items():
                 if isinstance(value, dict):
                     for k, v in value.items():
-                        tmp["%s/%s" % (key, k)] = v
+                        tmp[f"{key}/{k}"] = v
                 elif isinstance(value, list):
                     tmp[key] = ",".join(value)
                 else:
@@ -289,6 +287,8 @@ class Odoo:
             fields.update(tmp)
             rows.append(tmp)
 
+        # pylint: disable=R1732
+        fp = sys.stdout if file_path == "-" else open(file_path, "w+", encoding="utf-8")
         writer = csv.DictWriter(fp, sorted(fields))
         writer.writeheader()
         for row in rows:
@@ -297,8 +297,11 @@ class Odoo:
     def _analyse_out_json(self, data, file_path):
         """Output the analyse result as JSON"""
         # Write to a file or stdout
-        fp = sys.stdout if file_path == "-" else open(file_path, "w+")
-        json.dump(data, fp, indent=2)
+        if file_path == "-":
+            json.dump(data, sys.stdout, indent=2)
+        else:
+            with open(file_path, "w+", encoding="utf-8") as fp:
+                json.dump(data, fp, indent=2)
 
     def load_path(self, paths, depth=None):
         if isinstance(paths, str):
@@ -310,15 +313,22 @@ class Odoo:
         self.modules.update(result.copy())
 
     def load_json(self, filename):
-        fp = sys.stdin if filename == "-" else open(filename)
-        data = json.load(fp)
+        if filename == "-":
+            data = json.load(sys.stdin)
+        else:
+            with open(filename, encoding="utf-8") as fp:
+                data = json.load(fp)
 
         self.modules.update({k: Module.from_json(v) for k, v in data.items()})
         self.full = self.modules.copy()
 
     def save_json(self, filename):
-        fp = sys.stdout if filename == "-" else open(filename, "w+")
-        json.dump({k: m.to_json() for k, m in self.full.items()}, fp)
+        data = {k: m.to_json() for k, m in self.full.items()}
+        if filename == "-":
+            json.dump(data, sys.stdout)
+        else:
+            with open(filename, "w+", encoding="utf-8") as fp:
+                json.dump(data, fp)
 
     def _find_edges_in_loop(self, graph):
         # Eliminate not referenced and not referring modules
@@ -450,7 +460,7 @@ class Odoo:
                 render_field(model_id, model)
 
         def render_view(module_id, view_name, view):
-            view_id = "%s/%s" % (module_id, view_name)
+            view_id = f"{module_id}/{view_name}"
             output.node(view_id, label=view_name, color=view_color, shape=view_shape)
             output.edge(module_id, view_id)
 

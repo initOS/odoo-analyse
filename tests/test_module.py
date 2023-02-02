@@ -4,7 +4,7 @@
 import os
 from unittest import mock
 
-from odoo_analyse import Model, Module, View, module
+from odoo_analyse import Model, Module, Record, module
 
 
 def get_module():
@@ -94,12 +94,12 @@ def test_view():
     assert repr(view) == "<View: testing_module.view_test_model>"
     assert copied != view
     assert copied.to_json() == json
-    assert View.from_json(json).to_json() == json
+    assert Record.from_json(json).to_json() == json
 
 
 def test_view_failing_functions():
-    assert View.enforce_fullname(12, "testing_module") is None
+    assert Record.enforce_fullname(12, "testing_module") is None
 
     m = mock.MagicMock()
-    m.tag = "record"
-    assert View.from_xml("testing_module", m) is None
+    m.tag = "function"
+    assert Record.from_xml("testing_module", m) is None

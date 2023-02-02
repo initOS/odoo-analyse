@@ -13,15 +13,15 @@ _logger = logging.getLogger(__name__)
 
 
 def call(cmd, cwd=None):
-    proc = subprocess.Popen(
+    with subprocess.Popen(
         cmd,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         cwd=cwd,
         universal_newlines=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
-    )
-    return [pipe.strip() for pipe in proc.communicate()]
+    ) as proc:
+        return [pipe.strip() for pipe in proc.communicate()]
 
 
 def stopwords(words=None):
@@ -56,22 +56,23 @@ def hexhash_files(files, folder):
     hashes = []
     for f in sorted(set(files)):
         if os.path.isfile(f):
-            hashsum = hexhash(open(f, "rb").read())
+            with open(f, "rb") as fp:
+                hashsum = hexhash(fp.read())
         else:
             hashsum = "-"
 
         rel_path = os.path.relpath(f, folder) if f.startswith(folder) else f
-        hashes.append("%s %s" % (hashsum, rel_path))
+        hashes.append(f"{hashsum} {rel_path}")
     return hexhash("\n".join(hashes))
 
 
 def fix_indentation(filepath):
     """Fixes the indentation of a file"""
     result = False
-    with open(filepath, "r+") as fp:
+    with open(filepath, "r+", encoding="utf-8") as fp:
         buf = fp.read()
 
-    with open(filepath, "w+") as fp:
+    with open(filepath, "w+", encoding="utf-8") as fp:
         for line in buf.splitlines():
             left = ""
             for c in line:
@@ -82,7 +83,7 @@ def fix_indentation(filepath):
                     result = True
                 else:
                     break
-            fp.write("%s%s\n" % (left, line.strip()))
+            fp.write(f"{left}{line.strip()}\n")
 
     return result
 
@@ -94,12 +95,12 @@ def try_automatic_port(filepath):
         _logger.warning("Automatic porting needs 2to3 installed")
         return False
 
-    proc = subprocess.Popen(
+    with subprocess.Popen(
         [cmd, "-n", "-w", filepath],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-    )
-    proc.communicate()
+    ) as proc:
+        proc.communicate()
     return True
 
 
@@ -133,8 +134,8 @@ def analyse_language(path):
 def get_ast_source_segment(source, node):
     # Adapted from https://github.com/python/cpython/blob/3.8/Lib/ast.py
     try:
-        start = node.start - 1
-        end = node.end - 1
+        start = node.lineno - 1
+        end = node.end_lineno - 1
         start_offset = node.col_offset
         end_offset = node.end_col_offset
     except AttributeError:

@@ -4,13 +4,13 @@ from setuptools import find_packages, setup
 
 
 def read(fname):
-    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+    with open(os.path.join(os.path.dirname(__file__), fname), encoding="utf-8") as f:
         return f.read()
 
 
 setup(
     name="odoo-analyse",
-    version="1.2.1",
+    version="1.3.0",
     author="initOS GmbH",
     author_email="info@initos.com",
     description="Package to analyse odoo modules",
@@ -24,8 +24,8 @@ setup(
     package_name="odoo-analyse",
     include_package_data=True,
     entry_points={"console_scripts": ["odoo_analyse = odoo_analyse.__main__:main"]},
-    python_requires=">=3.5",
-    install_requires=["2to3", "cloc", "lxml"],
+    python_requires=">=3.6",
+    install_requires=["2to3", "cloc", "lxml", "mccabe"],
     extras_require={"graph": ["graphviz", "psycopg2"]},
     project_urls={
         "Documentation": "https://github.com/initOS/odoo-analyse/blob/master/README.md",

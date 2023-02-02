@@ -2,27 +2,13 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 import ast
+from statistics import median
 
+from mccabe import PathGraphingAstVisitor
+
+from .field import Field
+from .function import Function
 from .utils import get_ast_source_segment
-
-
-class Field:
-    def __init__(self, ttype, definition=None):
-        self.ttype = ttype
-        self.definition = definition
-
-    def __repr__(self):
-        return "<Field: %s>" % self.ttype
-
-    def to_json(self):
-        return {
-            "ttype": self.ttype,
-            "definition": self.definition,
-        }
-
-    @classmethod
-    def from_json(cls, data):
-        return Field(data["ttype"], data.get("definition"))
 
 
 class Model:
@@ -33,10 +19,28 @@ class Model:
         self.fields = fields or {}
         self.funcs = funcs or {}
 
-    def __repr__(self):
-        return "<Model: %s>" % self.name
+    @property
+    def complexity(self) -> int:
+        complexities = [f.complexity for f in self.funcs.values()]
+        return median(complexities or [0])
 
-    def copy(self):
+    @property
+    def max_complexity(self) -> int:
+        return max((f.complexity for f in self.funcs.values()), default=0)
+
+    @property
+    def min_complexity(self) -> int:
+        return min((f.complexity for f in self.funcs.values()), default=0)
+
+    def is_model(self) -> bool:
+        return bool(self.name or self.inherit)
+
+    def __repr__(self) -> str:
+        if self.is_model():
+            return f"<Model: {self.name}>"
+        return f"<Class: {self.name}>"
+
+    def copy(self) -> "Model":
         return Model(
             self.name,
             self.inherit.copy(),
@@ -45,14 +49,14 @@ class Model:
             self.funcs.copy(),
         )
 
-    def update(self, other):
+    def update(self, other: "Model") -> None:
         if self.name == other.name:
             self.inherit.update(other.inherit)
             self.inherits.update(other.inherits)
             self.fields.update(other.fields)
             self.funcs.update(other.funcs)
 
-    def _parse_assign(self, obj, content):
+    def _parse_assign(self, obj: ast.Assign, content: str) -> None:
         assignments = [k.id for k in obj.targets if isinstance(k, ast.Name)]
         if len(assignments) != 1:
             return
@@ -84,39 +88,56 @@ class Model:
 
             if f.value.id == "fields":
                 definition = get_ast_source_segment(content, value)
-                self.fields[assign] = Field("fields.%s" % f.attr, definition)
+                self.fields[assign] = Field(f"fields.{f.attr}", definition)
 
-    def to_json(self):
+    def _parse_function(self, obj: ast.FunctionDef) -> None:
+        visitor = PathGraphingAstVisitor()
+        visitor.preorder(obj, visitor)
+
+        complexity = 0
+        for graph in visitor.graphs.values():
+            complexity = max(complexity, graph.complexity())
+
+        self.funcs[obj.name] = Function(
+            [a.arg for a in obj.args.args],
+            complexity=complexity,
+            lines=obj.end_lineno - obj.lineno,
+        )
+
+    def to_json(self) -> dict:
         return {
             "name": self.name,
             "inherit": list(self.inherit),
             "inherits": self.inherits,
             "fields": {k: v.to_json() for k, v in self.fields.items()},
-            "funcs": self.funcs,
+            "field_count": len(self.fields),
+            "funcs": {k: v.to_json() for k, v in self.funcs.items()},
+            "func_count": len(self.funcs),
+            "complexity": self.complexity,
+            "min_complexity": self.min_complexity,
+            "max_complexity": self.max_complexity,
         }
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data: dict) -> "Model":
         return cls(
             name=data.get("name", None),
             inherit=data.get("inherit", None),
             inherits=data.get("inherits", None),
             fields={k: Field.from_json(v) for k, v in data.get("fields", {}).items()},
-            funcs=data.get("funcs", None),
+            funcs={k: Function.from_json(v) for k, v in data.get("funcs", {}).items()},
         )
 
     @classmethod
-    def from_ast(cls, obj, content):
+    def from_ast(cls, obj: ast.ClassDef, content: str) -> "Model":
         model = cls()
         for child in obj.body:
             if isinstance(child, ast.Assign):
                 model._parse_assign(child, content)
             elif isinstance(child, ast.FunctionDef):
-                model.funcs[child.name] = [a.arg for a in child.args.args]
+                model._parse_function(child)
 
-        if model.name:
-            return model
-        if len(model.inherit) == 1:
+        if model.inherit and not model.name:
             model.name = list(model.inherit)[0]
-            return model
-        return None
+
+        return model

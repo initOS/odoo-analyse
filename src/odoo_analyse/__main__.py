@@ -239,11 +239,12 @@ def parse_args():
         default=False,
         help="Show the full graph and only use the filters for the starting nodes",
     )
-    group.add_argument(
-        "--renderer",
-        default="dot",
-        help="Specify the rendering engine. %s" % graphviz.ENGINES,
-    )
+    if graphviz is not None:
+        group.add_argument(
+            "--renderer",
+            default="dot",
+            help=f"Specify the rendering engine. {graphviz.ENGINES}",
+        )
 
     return parser.parse_args()
 
@@ -284,7 +285,7 @@ def main():
     if args.full_graph:
         odoo.show_full_dependency = True
 
-    if args.renderer in graphviz.ENGINES:
+    if graphviz is not None and args.renderer in graphviz.ENGINES:
         odoo.set_opt("odoo.engine", args.renderer)
 
     # Apply the filters

@@ -2,17 +2,18 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 import ast
-import csv
 import logging
 import os
 import re
 import sys
 import tempfile
+import time
 from functools import partial
 
 from lxml import etree
 
 from .model import Model
+from .record import Record
 from .utils import (
     analyse_language,
     fix_indentation,
@@ -21,7 +22,6 @@ from .utils import (
     stopwords,
     try_automatic_port,
 )
-from .view import View
 
 Manifests = ["__manifest__.py", "__odoo__.py", "__openerp__.py"]
 _logger = logging.getLogger(__name__)
@@ -41,10 +41,12 @@ class Module:
         self.manifest = {}
         # Models defined in the module
         self.models = {}
+        # Additional defined classes in the module
+        self.classes = {}
         # Views defined in the module
         self.views = {}
-        # Records defined in the module
-        self.data = 0
+        # Records (non views) defined in the module
+        self.records = {}
         # Modules this module depends on
         self.depends = set()
         # Modules this module imports in python files
@@ -58,6 +60,7 @@ class Module:
         self.language = {}
         # readme file, status and description
         self.words = set()
+        self.duration = 0
         # hash of all the modules
         self.hashsum = ""
 
@@ -92,9 +95,12 @@ class Module:
     @property
     def readme(self):
         for f in os.listdir(self.path):
-            if is_readme(f):
-                p = os.path.join(self.path, f)
-                return open(p, "r").read()
+            if not is_readme(f):
+                continue
+
+            p = os.path.join(self.path, f)
+            with open(p, "r", encoding="utf-8") as fp:
+                return fp.read()
         return ""
 
     @property
@@ -122,7 +128,9 @@ class Module:
         return {
             "name": self.name,
             "model_count": len(self.models),
-            "data_count": self.data,
+            "class_count": len(self.classes),
+            "record_count": len(self.records),
+            "view_count": len(self.views),
             "depends": len(deps),
         }
 
@@ -144,7 +152,7 @@ class Module:
         self.refers.update(kwargs.get("refers", []))
 
     def __repr__(self):
-        return "<Module: %s>" % self.name
+        return f"<Module: {self.name}>"
 
     def analyse_language(self):
         self.language = analyse_language(self.path)
@@ -154,20 +162,21 @@ class Module:
 
     def _load_python(self, path, filename):
         def parse_python(filepath, version=None):
-            with open(filepath) as fp:
+            with open(filepath, encoding="utf-8") as fp:
                 data = fp.read()
 
             # Python 3.8 allows setting the feature level
             if version:
                 parsed = ast.parse(data, feature_version=version)
                 _logger.warning("Feature version %s %s", version, filepath)
-                self.status.add("feature-%s-%s" % version)
+                self.status.add(f"feature-{version[0]}-{version[1]}")
                 return parsed
             return ast.parse(data)
 
         def port_fix_file(filepath):
             with tempfile.NamedTemporaryFile("w+") as tmp:
-                tmp.file.write(open(filepath, "r").read())
+                with open(filepath, "r", encoding="utf-8") as fp:
+                    tmp.file.write(fp.read())
                 if try_automatic_port(tmp.name):
                     _logger.warning("Ported %s", filepath)
                     self.status.add("ported")
@@ -191,13 +200,15 @@ class Module:
             except (SyntaxError, TabError) as e:
                 exc = e
 
-        _logger.error("Not parsable %s: %s", filepath, exc)
+        _logger.error(f"Not parsable {filepath}: {exc}")
         raise exc
 
-    def _parse_class_def(self, obj, content):
+    def _parse_class_def(self, obj: ast.ClassDef, content: str) -> None:
         model = Model.from_ast(obj, content)
-        if not model or not model.name:
+        if not model.is_model():
+            self.classes[model.name] = model
             return
+
         if model.name in self.models:
             self.models[model.name].update(model)
         else:
@@ -209,10 +220,10 @@ class Module:
 
         obj = self._load_python(path, filename)
 
-        with open(os.path.join(path, filename)) as fp:
+        with open(os.path.join(path, filename), encoding="utf-8") as fp:
             content = fp.read()
 
-        self.add(files=path + filename)
+        self.add(files=os.path.join(path, filename))
 
         imports = set()
         fmt = "{}.{}".format
@@ -240,17 +251,20 @@ class Module:
 
             p = path
             for f in imp.lstrip(".").split("."):
-                if os.path.isfile("%s%s.py" % (p, f)):
-                    self._parse_python(p, f + ".py")
-                elif os.path.isfile("%s%s/__init__.py" % (p, f)):
-                    self._parse_python("%s%s/" % (p, f), "__init__.py")
-                elif os.path.isdir(p + f):
-                    p += f + "/"
+                if os.path.isfile(os.path.join(p, f"{f}.py")):
+                    self._parse_python(p, f"{f}.py")
+                    continue
+
+                subdir = os.path.join(p, f)
+                if os.path.isfile(os.path.join(subdir, "__init__.py")):
+                    self._parse_python(subdir, "__init__.py")
+                elif os.path.isdir(subdir):
+                    p = subdir
                 else:
                     break
 
     def _parse_manifest(self, path):
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             obj = ast.literal_eval(fp.read())
             if isinstance(obj, dict):
                 self.update(depends=obj.get("depends", []), files=obj.get("data", []))
@@ -263,10 +277,6 @@ class Module:
         if not os.path.isfile(path):
             self.status.add("missing-file")
             return
-
-        with open(path) as fp:
-            obj = csv.reader(fp)
-            self.data += max(0, obj.line_num - 1)
 
     def _parse_xml(self, path):
         if not os.path.isfile(path):
@@ -286,7 +296,6 @@ class Module:
             "template",
             "url",
         ]
-        self.data += sum(len(obj.xpath("//%s" % tag)) for tag in tags)
 
         # xpaths to get all referred modules
         xpaths = [
@@ -295,7 +304,7 @@ class Module:
             "//record[@model='ir.ui.view']/field[@name='arch']//@t-call",
             "//template//@t-call",
         ]
-        xpaths.extend("//%s/@id" % tag for tag in tags)
+        xpaths.extend(f"//{tag}/@id" for tag in tags)
 
         xmlid = re.compile(r"\w+\.\w+")
         xpaths = " | ".join(xpaths)
@@ -303,15 +312,21 @@ class Module:
         self.refers.update({x for x in refs if x != self.name})
 
         # xpaths to extract views
-        for node in obj.xpath("//record[@model='ir.ui.view'] | //template"):
-            view = View.from_xml(self.name, node)
-            if not view:
+        for node in obj.xpath("//record | //template"):
+            rec = Record.from_xml(self.name, node)
+            if not rec:
                 continue
 
-            if view.name in self.views:
-                self.views[view.name].update(view)
+            if not rec.is_view():
+                if rec.name in self.records:
+                    self.records[rec.name].update(rec)
+                else:
+                    self.records[rec.name] = rec
+
+            elif rec.name in self.views:
+                self.views[rec.name].update(rec)
             else:
-                self.views[view.name] = view
+                self.views[rec.name] = rec
 
     def _parse_text_for_keywords(self, texts):
         if not isinstance(texts, list):
@@ -323,17 +338,19 @@ class Module:
             self.words |= tmp.difference(words)
 
     def _parse_readme(self, path):
-        with open(path) as fp:
+        with open(path, encoding="utf-8") as fp:
             self._parse_text_for_keywords(fp.read())
 
     def to_json(self):
         return {
             "path": self.path,
             "name": self.name,
+            "duration": self.duration,
             "manifest": self.manifest,
             "models": {n: m.to_json() for n, m in self.models.items()},
+            "classes": {n: c.to_json() for n, c in self.classes.items()},
             "views": {n: v.to_json() for n, v in self.views.items()},
-            "data": self.data,
+            "records": {n: d.to_json() for n, d in self.records.items()},
             "depends": list(self.depends),
             "imports": list(self.imports),
             "refers": list(self.refers),
@@ -350,8 +367,7 @@ class Module:
         module.name = data["name"]
         module.manifest = data["manifest"]
         module.models = {n: Model.from_json(m) for n, m in data["models"].items()}
-        module.views = {n: View.from_json(m) for n, m in data["views"].items()}
-        module.data = data["data"]
+        module.views = {n: Record.from_json(m) for n, m in data["views"].items()}
         module.depends = set(data["depends"])
         module.imports = set(data["imports"])
         module.refers = set(data["refers"])
@@ -360,11 +376,20 @@ class Module:
         module.language = data["language"]
         module.words = set(data["words"])
         module.hashsum = data["hashsum"]
+        module.duration = data.get("duration") or 0
+
+        records = data.get("records", {})
+        module.records = {n: Record.from_json(d) for n, d in records.items()}
+
+        classes = data.get("classes", {})
+        module.classes = {n: Model.from_json(m) for n, m in classes.items()}
+
         return module
 
     @classmethod
     def from_path(cls, path):
         files_list = []
+        analyse_start = time.time()
         module = cls(path)
         found_init, found_manifest = False, 0
         if not path.endswith("/"):
@@ -416,6 +441,7 @@ class Module:
         if module.status:
             _logger.info("Status %s: %s", module.name, module.status)
 
+        module.duration = time.time() - analyse_start
         return module
 
     @classmethod
