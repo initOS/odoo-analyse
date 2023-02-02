@@ -27,7 +27,7 @@ def test_module():
     assert mod.summary == "summary"
     assert mod.version == "x.0.1.0.0"
     assert mod.website == "https://example.org"
-    assert mod.info.get("model_count") == 3
+    assert mod.info.get("model_count") == 4
 
     assert "base" in mod.depends
 
