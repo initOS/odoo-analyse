@@ -1,3 +1,4 @@
+# pylint: disable=W0104
 {
     "name": "test module",
     "version": "x.0.1.0.0",

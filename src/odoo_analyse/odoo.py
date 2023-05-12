@@ -210,6 +210,7 @@ class Odoo:
 
     def interactive(self):
         local_vars = {"analyse": self}
+        # pylint: disable=C0415
         try:
             from IPython import start_ipython
 
@@ -268,7 +269,7 @@ class Odoo:
         else:
             self._analyse_out_json(res, file_path)
 
-    def _analyse_out_csv(self, data, file_path):
+    def _analyse_out_csv(self, data, file_path):  # pylint: disable=R0201
         """Output the analyse result as CSV"""
         fields = {"name"}
         rows = []
@@ -287,14 +288,14 @@ class Odoo:
             fields.update(tmp)
             rows.append(tmp)
 
-        # pylint: disable=R1732
+        # pylint: disable=E0012,R1732
         fp = sys.stdout if file_path == "-" else open(file_path, "w+", encoding="utf-8")
         writer = csv.DictWriter(fp, sorted(fields))
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
 
-    def _analyse_out_json(self, data, file_path):
+    def _analyse_out_json(self, data, file_path):  # pylint: disable=R0201
         """Output the analyse result as JSON"""
         # Write to a file or stdout
         if file_path == "-":
@@ -330,7 +331,7 @@ class Odoo:
             with open(filename, "w+", encoding="utf-8") as fp:
                 json.dump(data, fp)
 
-    def _find_edges_in_loop(self, graph):
+    def _find_edges_in_loop(self, graph):  # pylint: disable=R0201
         # Eliminate not referenced and not referring modules
         while True:
             before = len(graph)
@@ -424,7 +425,7 @@ class Odoo:
 
         self._show_output(output, filename=filename)
 
-    def _show_output(self, graph, filename):
+    def _show_output(self, graph, filename):  # pylint: disable=R0201
         graph.render(filename=filename)
 
     def show_structure_graph(
@@ -443,14 +444,14 @@ class Odoo:
 
         def render_field(model_id, model):
             for field_name in model.fields:
-                field_id = "%s/%s" % (model_id, field_name)
+                field_id = f"{model_id}/{field_name}"
                 output.node(
                     field_id, label=field_name, color=field_color, shape=field_shape
                 )
                 output.edge(model_id, field_id)
 
         def render_model(module_id, model_name, model):
-            model_id = "%s/%s" % (module_id, model_name)
+            model_id = f"{module_id}{model_name}"
             output.node(
                 model_id, label=model_name, color=model_color, shape=model_shape
             )
@@ -459,7 +460,7 @@ class Odoo:
             if fields:
                 render_field(model_id, model)
 
-        def render_view(module_id, view_name, view):
+        def render_view(module_id, view_name, _view):
             view_id = f"{module_id}/{view_name}"
             output.node(view_id, label=view_name, color=view_color, shape=view_shape)
             output.edge(module_id, view_id)

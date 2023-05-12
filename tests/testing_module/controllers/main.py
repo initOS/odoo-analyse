@@ -1,9 +1,9 @@
 # © 2020 initOS GmbH
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
+# disable: pylint
 
-import odoo.addons.base.controllers.rpc as rpc
-from odoo.addons.base.controllers.rpc import RPC
+from odoo.addons.base.controllers import rpc
 
 
-class TestRPC(RPC):
+class TestRPC(rpc.RPC):
     print(rpc)

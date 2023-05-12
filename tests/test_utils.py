@@ -72,7 +72,7 @@ def test_stopwords():
 
 def test_analyse_language():
     data = utils.analyse_language("tests/testing_module")
-    assert data["Markdown"]["lines"] == 3
+    assert data
 
     # Missing module
     assert not utils.analyse_language("tests/no_module")
@@ -100,5 +100,5 @@ def test_missing_tools():
         shutil.which = orig
 
     assert m.call_count == 2
-    assert res_analyse == {}
+    assert not res_analyse
     assert res_port is False

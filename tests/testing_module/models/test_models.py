@@ -24,12 +24,12 @@ class ResUsers(models.Model):
     _inherit = ["res.users", "test.abstract"]
 
     def _get_default(self):
+        print(self)
         return False
 
     new_boolean = fields.Boolean()
     new_m2o = fields.Many2one(
         "res.partner",
-        _get_default(),
         string="Label",
         default=_get_default + 1,
     )
@@ -38,9 +38,9 @@ class ResUsers(models.Model):
 class ResPartner(models.Model):
     _inherit = "res.partner"
 
-    def testing(self, async, k=100):
-        print(async)
-        print(RPC, k)
+    def testing(self, asynch, k=100):
+        print(asynch)
+        print(self, k)
 
     k = int()
 

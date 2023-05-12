@@ -197,7 +197,7 @@ class Module:
         for func in funcs:
             try:
                 return func(filepath)
-            except (SyntaxError, TabError) as e:
+            except SyntaxError as e:
                 exc = e
 
         _logger.error(f"Not parsable {filepath}: {exc}")

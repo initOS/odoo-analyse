@@ -3,6 +3,7 @@ import tempfile
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from odoo_analyse import Odoo
 from odoo_analyse import odoo as o
 

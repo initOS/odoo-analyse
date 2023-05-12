@@ -1,0 +1,30 @@
+name: main
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ vars.PYTHON_VERSION }}
+
+      - name: Install build tools
+        run: |
+          sudo apt-get install cloc
+          python -m pip install --upgrade pip pre-commit setuptools tox
+
+      - name: Run pre-commit
+        run: |
+          pre-commit run --all-files
+
+      - name: Run tox tests
+        run: |
+          tox

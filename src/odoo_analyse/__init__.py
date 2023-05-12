@@ -8,3 +8,5 @@ from .record import Record, View
 from .utils import folder_blacklist, stopwords
 
 __all__ = ["Model", "Module", "Odoo", "folder_blacklist", "stopwords", "View"]
+
+VERSION = "1.3.0"
