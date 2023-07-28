@@ -285,10 +285,10 @@ class Module:
 
     def _parse_js(self, path, pattern):
         """Parse JavaScript files.
-           `path` .. directory of the module
-           `pattern` .. relative path/glob of the JS files"""
+        `path` .. directory of the module
+        `pattern` .. relative path/glob of the JS files"""
 
-        for file in glob.glob(os.path.join(path, pattern.strip('/')), recursive=True):
+        for file in glob.glob(os.path.join(path, pattern.strip("/")), recursive=True):
             if not file.endswith(".js"):
                 continue
 
