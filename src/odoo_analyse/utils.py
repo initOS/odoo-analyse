@@ -3,11 +3,13 @@
 
 import ast
 import hashlib
+import json
 import logging
 import os
-import re
 import shutil
 import subprocess
+from functools import reduce
+from json.decoder import JSONDecodeError
 
 _logger = logging.getLogger(__name__)
 
@@ -111,19 +113,26 @@ def analyse_language(path):
         _logger.warning("Language analyse needs cloc")
         return {}
 
-    output, error = call([cmd, path])
+    output, error = call([cmd, path, "--json"])
     if error:
+        _logger.warning(error)
+
+    try:
+        output = json.loads(output)
+    except ValueError as err:
+        _logger.warning(err)
         return {}
 
-    result = {}
-    reg = re.compile(r"([^:]*?)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)")
     total_code = 0
-    for line in output.splitlines():
-        match = reg.match(line)
-        if match:
-            lang, _, _, _, code = match.groups()
-            total_code += int(code)
-            result[lang] = {"lines": int(code), "fraction_from_total": 0}
+    result = {}
+    for key, val in output.items():
+        if "code" not in val:
+            # skipping 'header' and anyother non-lang keys
+            continue
+
+        code = int(val["code"])
+        total_code += code
+        result[key] = {"lines": code, "fraction_from_total": 0}
 
     for value in result.values():
         value["fraction_from_total"] = value["lines"] / total_code
@@ -149,3 +158,26 @@ def get_ast_source_segment(source, node):
     segment.extend(lines[start + 1 : end])
     segment.append(lines[end].encode()[:end_offset].decode())
     return "".join(segment)
+
+
+def eslint_complexity(js_file):
+    """Return the JS complexity using eslintcc"""
+    cmd = shutil.which("eslintcc")
+    if not cmd:
+        _logger.warning(f"eslintcc not found. Skipping complexity for js {js_file}")
+        return None
+
+    output, _ = call([cmd, "-a", "-f=json", js_file])
+    try:
+        output = json.loads(output)
+    except JSONDecodeError:
+        return None
+    return output["average"]["rank"]
+
+
+def geometric_mean(data):
+    data = list(filter(None, data))
+    if not data:
+        return 0
+
+    return pow(reduce(lambda x, y: x * y, data), 1 / len(data))

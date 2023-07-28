@@ -5,10 +5,13 @@ from typing import Union
 
 
 class Function:
-    def __init__(self, args: list, complexity: int = None, lines: int = None):
+    def __init__(
+        self, args: list, complexity: int = None, lines: int = None, halstead: int = 0
+    ):
         self.args = args
         self.complexity = complexity or 0
         self.lines = lines or 0
+        self.halstead = halstead or 0
 
     def __repr__(self) -> str:
         return f"<Function: {self.args}>"
@@ -19,10 +22,16 @@ class Function:
             "arg_count": len(self.args),
             "complexity": self.complexity,
             "lines": self.lines,
+            "halstead": self.halstead,
         }
 
     @classmethod
     def from_json(cls, data: Union[dict, list]) -> "Function":
         if isinstance(data, (list, tuple)):
             return cls(data)
-        return cls(data["args"], data.get("complexity"), data.get("lines"))
+        return cls(
+            data["args"],
+            data.get("complexity"),
+            data.get("lines"),
+            data.get("halstead"),
+        )

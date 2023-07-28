@@ -5,8 +5,18 @@ from .model import Model
 from .module import Module
 from .odoo import Odoo
 from .record import Record, View
-from .utils import folder_blacklist, stopwords
+from .utils import eslint_complexity, folder_blacklist, geometric_mean, stopwords
 
-__all__ = ["Model", "Module", "Odoo", "folder_blacklist", "stopwords", "View"]
+__all__ = [
+    "Model",
+    "Module",
+    "Odoo",
+    "folder_blacklist",
+    "stopwords",
+    "Record",
+    "View",
+    "eslint_complexity",
+    "geometric_mean",
+]
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"

@@ -2,6 +2,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 import ast
+import glob
 import logging
 import os
 import re
@@ -9,9 +10,11 @@ import sys
 import tempfile
 import time
 from functools import partial
+from pathlib import Path
 
 from lxml import etree
 
+from .js_module import JSModule
 from .model import Model
 from .record import Record
 from .utils import (
@@ -43,6 +46,8 @@ class Module:
         self.models = {}
         # Additional defined classes in the module
         self.classes = {}
+        # JS modules
+        self.js_modules = {}
         # Views defined in the module
         self.views = {}
         # Records (non views) defined in the module
@@ -278,7 +283,33 @@ class Module:
             self.status.add("missing-file")
             return
 
-    def _parse_xml(self, path):
+    def _parse_js(self, path, pattern):
+        """Parse JavaScript files.
+           `path` .. directory of the module
+           `pattern` .. relative path/glob of the JS files"""
+
+        for file in glob.glob(os.path.join(path, pattern.strip('/')), recursive=True):
+            if not file.endswith(".js"):
+                continue
+
+            module = JSModule.from_file(file, pattern)
+            if not module:
+                return
+
+            self.js_modules[module.name] = module
+
+    def _parse_assets(self, parent_path):
+        for files in self.manifest.get("assets", {}).values():
+            for file in files:
+                # Might be a tuple with include/remove
+                if not isinstance(file, str) and file[0] == "remove":
+                    continue
+                if not isinstance(file, str):
+                    file = file[-1]
+
+                self._parse_js(parent_path, file)
+
+    def _parse_xml(self, path, parent_path=None):
         if not os.path.isfile(path):
             self.status.add("missing-file")
             return
@@ -328,6 +359,10 @@ class Module:
             else:
                 self.views[rec.name] = rec
 
+            for script in obj.xpath("//script/@src"):
+                # this will return string a path,
+                self._parse_js(parent_path, script)
+
     def _parse_text_for_keywords(self, texts):
         if not isinstance(texts, list):
             texts = [texts]
@@ -349,6 +384,7 @@ class Module:
             "manifest": self.manifest,
             "models": {n: m.to_json() for n, m in self.models.items()},
             "classes": {n: c.to_json() for n, c in self.classes.items()},
+            "js_modules": {n: m.to_json() for n, m in self.js_modules.items()},
             "views": {n: v.to_json() for n, v in self.views.items()},
             "records": {n: d.to_json() for n, d in self.records.items()},
             "depends": list(self.depends),
@@ -368,6 +404,9 @@ class Module:
         module.manifest = data["manifest"]
         module.models = {n: Model.from_json(m) for n, m in data["models"].items()}
         module.views = {n: Record.from_json(m) for n, m in data["views"].items()}
+        module.js_modules = {
+            n: JSModule.from_json(m) for n, m in data.get("js_modules", {}).items()
+        }
         module.depends = set(data["depends"])
         module.imports = set(data["imports"])
         module.refers = set(data["refers"])
@@ -388,6 +427,7 @@ class Module:
 
     @classmethod
     def from_path(cls, path):
+        parent_path = str(Path(path).parent.absolute())
         files_list = []
         analyse_start = time.time()
         module = cls(path)
@@ -427,11 +467,13 @@ class Module:
 
         module.analyse_language()
 
+        module._parse_assets(parent_path)
+
         for file in module.files:
             file_path = os.path.join(path, file)
             files_list.append(file_path)
             if file.endswith(".xml"):
-                module._parse_xml(file_path)
+                module._parse_xml(file_path, parent_path)
             elif file.endswith(".csv"):
                 module._parse_csv(file_path)
 

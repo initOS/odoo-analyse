@@ -5,9 +5,10 @@ Analyse tool for odoo modules
 ## Installation
 
 Install the module with the ability to render graphs:
-```
-$ apt install cloc graphviz
-$ pip3 install "odoo-analyse[graph]"
+```bash
+apt install cloc graphviz
+npm install -g eslintcc  # required for JS complexity
+pip3 install "odoo-analyse[graph]"
 ```
 
 ## Usage

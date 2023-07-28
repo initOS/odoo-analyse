@@ -5,10 +5,11 @@ import ast
 from statistics import median
 
 from mccabe import PathGraphingAstVisitor
+from radon.metrics import h_visit_ast
 
 from .field import Field
 from .function import Function
-from .utils import get_ast_source_segment
+from .utils import geometric_mean, get_ast_source_segment
 
 
 class Model:
@@ -31,6 +32,10 @@ class Model:
     @property
     def min_complexity(self) -> int:
         return min((f.complexity for f in self.funcs.values()), default=0)
+
+    @property
+    def halstead(self) -> int:
+        return geometric_mean([f.halstead for f in self.funcs.values()])
 
     def is_model(self) -> bool:
         return bool(self.name or self.inherit)
@@ -94,6 +99,8 @@ class Model:
         visitor = PathGraphingAstVisitor()
         visitor.preorder(obj, visitor)
 
+        halstead_visitor = h_visit_ast(obj)
+
         complexity = 0
         for graph in visitor.graphs.values():
             complexity = max(complexity, graph.complexity())
@@ -102,6 +109,7 @@ class Model:
             [a.arg for a in obj.args.args],
             complexity=complexity,
             lines=obj.end_lineno - obj.lineno,
+            halstead=halstead_visitor.total.volume,
         )
 
     def to_json(self) -> dict:
