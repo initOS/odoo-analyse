@@ -29,7 +29,7 @@ _logger = logging.getLogger(__name__)
 
 
 Extensions = {
-    "2ot3": "Automatic porting needs 2to3 installed",
+    "2to3": "Automatic porting needs 2to3 installed",
     "cloc": "Language analyse needs cloc",
     "eslintcc": "eslintcc not found. Skipping complexity for js",
 }
