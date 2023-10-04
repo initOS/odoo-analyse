@@ -94,7 +94,6 @@ def try_automatic_port(filepath):
     """Tries to port a python 2 script to python 3 using 2to3"""
     cmd = shutil.which("2to3")
     if cmd is None:
-        _logger.warning("Automatic porting needs 2to3 installed")
         return False
 
     with subprocess.Popen(
@@ -110,10 +109,9 @@ def analyse_language(path):
     """Analyse the languages of a directory"""
     cmd = shutil.which("cloc")
     if cmd is None:
-        _logger.warning("Language analyse needs cloc")
         return {}
 
-    output, error = call([cmd, path, "--json"])
+    output, error = call([cmd, path, "--json", "--strip-str-comments"])
     if error:
         _logger.warning(error)
 
@@ -164,7 +162,6 @@ def eslint_complexity(js_file):
     """Return the JS complexity using eslintcc"""
     cmd = shutil.which("eslintcc")
     if not cmd:
-        _logger.warning(f"eslintcc not found. Skipping complexity for js {js_file}")
         return None
 
     output, _ = call([cmd, "-a", "-f=json", js_file])
