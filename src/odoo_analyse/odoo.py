@@ -26,6 +26,16 @@ except ImportError:
 _logger = logging.getLogger(__name__)
 
 
+def extend_version(version, odoo_version):
+    if not isinstance(version, str) or not odoo_version:
+        return version
+
+    if "." not in odoo_version:
+        odoo_version += ".0"
+
+    return f"{odoo_version}.{version}" if version.count(".") < 3 else version
+
+
 def match(s, patterns):
     return any(fnmatch(s, x) for x in patterns.split(","))
 
@@ -79,8 +89,7 @@ class Odoo:
         for section_name, section in cp.items():
             self.config[section_name] = dict(section)
             for option_name, value in section.items():
-                key = "%s.%s" % (section_name, option_name)
-                self.config[key] = value
+                self.config[f"{section_name}.{option_name}"] = value
 
     def set_opt(self, option, value):
         self.config[option] = value
@@ -134,10 +143,33 @@ class Odoo:
             name: module for name, module in self.items() if match(name, pattern)
         }
 
-    def state_filter(self, config_path=None, state="installed", **kwargs):
-        """Filter the modules by their states in a database"""
-
+    def state_filter(self, state="installed"):
         _logger.debug("Applying filter: state [%s]", state)
+        self.modules = {
+            name: module for name, module in self.items() if module.state == state
+        }
+
+    def estimate_state(self, modules):
+        installed = {name for name in self.full if match(name, modules)}
+
+        graph = {}
+        for name, module in self.full.items():
+            if name not in graph:
+                graph[name] = set()
+            graph[name].update(module.depends)
+
+            for dep in module.depends:
+                if dep not in graph:
+                    graph[dep] = set()
+
+        downstream, upstream = self._resolve_dependencies(graph, installed)
+        installed = downstream | upstream
+
+        for name, module in self.full.items():
+            module.state = ["uninstalled", "installed"][name in installed]
+
+    def load_state_from_database(self, config_path=None, **kwargs):
+        """Filter the modules by their states in a database"""
 
         def adapt(val):
             if val.lower() in ("false", "none", ""):
@@ -181,11 +213,10 @@ class Odoo:
         # Connect to the database and fetch the modules in the given state
         with connect(**args) as db:
             cr = db.cursor()
-            cr.execute("SELECT name FROM ir_module_module WHERE state = %s", (state,))
-            names = {row[0] for row in cr.fetchall()}
-
-        # Apply the filter
-        self.modules = {name: module for name, module in self.items() if name in names}
+            cr.execute("SELECT name, state FROM ir_module_module")
+            for name, state in cr.fetchall():
+                if name in self.full:
+                    self.full[name].state = state
 
     def load(self, config_path):
         _logger.debug("Reading odoo configuration file")
@@ -259,6 +290,7 @@ class Odoo:
                 "category": module.category,
                 "version": module.version,
                 "status": list(module.status),
+                "state": module.state or "",
             }
             if missing:
                 _logger.error("Missing dependency: %s -> %s", name, missing)
@@ -299,16 +331,16 @@ class Odoo:
         """Output the analyse result as JSON"""
         # Write to a file or stdout
         if file_path == "-":
-            json.dump(data, sys.stdout, indent=2)
+            print(json.dumps(data, indent=2))
         else:
             with open(file_path, "w+", encoding="utf-8") as fp:
                 json.dump(data, fp, indent=2)
 
-    def load_path(self, paths, depth=None):
+    def load_path(self, paths, depth=None, **config):
         if isinstance(paths, str):
             paths = [paths]
 
-        result = Module.find_modules(paths, depth=depth)
+        result = Module.find_modules(paths, depth=depth, **config)
 
         self.full.update(result.copy())
         self.modules.update(result.copy())
@@ -346,6 +378,37 @@ class Odoo:
 
         return {(a, b) for a, bs in graph.items() for b in bs}
 
+    def _resolve_dependencies(self, graph, nodes):
+        visible = set(nodes)
+        nodes = list(nodes)
+        highlight = set()
+
+        visited = set()
+        while nodes:
+            current = nodes.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            depends = graph[current]
+            visible.update(depends)
+            nodes.extend(depends)
+
+        # Extend the auto install
+        current, previous = len(visible), None
+        while current != previous:
+            for name, module in self.full.items():
+                if (
+                    module.auto_install
+                    and module.depends.issubset(visible)
+                    and name not in visible
+                ):
+                    visible.add(name)
+                    highlight.add(name)
+            current, previous = len(visible), current
+
+        return visible, highlight
+
     def _show_graph(
         self,
         graph,
@@ -377,30 +440,7 @@ class Odoo:
         # Show all dependency ignoring the filters
         highlight = set()
         if self.opt("odoo.show_full_dependency") or self.show_full_dependency:
-            nodes = list(visible)
-            visited = set()
-            while nodes:
-                current = nodes.pop()
-                if current in visited:
-                    continue
-                visited.add(current)
-
-                depends = graph[current]
-                visible.update(depends)
-                nodes.extend(depends)
-
-            # Extend the auto install
-            current, previous = len(visible), None
-            while current != previous:
-                for name, module in self.full.items():
-                    if (
-                        module.auto_install
-                        and module.depends.issubset(visible)
-                        and name not in visible
-                    ):
-                        visible.add(name)
-                        highlight.add(name)
-                current, previous = len(visible), current
+            visible, highlight = self._resolve_dependencies(graph, visible)
 
         if not visible:
             return
@@ -487,7 +527,7 @@ class Odoo:
 
         self._show_output(output, filename=filename or "structure.gv")
 
-    def _build_module_graph(self, depends, imports, refers):
+    def _build_module_graph(self, depends=True, imports=False, refers=False):
         graph = {}
         for name, module in self.items():
             graph[name] = set()
@@ -508,6 +548,7 @@ class Odoo:
         imports=False,
         refers=False,
         filename=None,
+        odoo_version=None,
     ):
         # Build the dependency graph
         graph = self._build_module_graph(depends, imports, refers)
@@ -516,7 +557,12 @@ class Odoo:
         loop_edges = self._find_edges_in_loop(graph)
         # Evaluate the migration state if possible
         if version:
-            migrated = {name for name, module in self.items()}
+            migrated = {
+                name
+                for name, module in self.items()
+                if match(extend_version(module.version, odoo_version), version)
+            }
+
             fully_migrated = {
                 name
                 for name, mod in self.items()

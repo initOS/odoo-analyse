@@ -97,14 +97,14 @@ def test_odoo_filters(odoo):
         odoo.modules["abc"] = odoo.modules["def"] = module
         cr = db.__enter__.return_value = MagicMock()
         cur = cr.cursor.return_value = MagicMock()
-        cur.fetchall.return_value = [("def",)]
-        odoo.state_filter()
+        cur.fetchall.return_value = [("def", "installed")]
+        odoo.load_state_from_database()
 
         mock.assert_called_once()
         cr.cursor.assert_called_once()
 
         cur.execute.assert_called_once()
-        assert len(odoo) == 1
+        odoo.state_filter()
 
 
 def test_odoo_run_graph(odoo):

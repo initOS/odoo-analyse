@@ -40,6 +40,8 @@ class Module:
         self.path = path
         # Technical name of the module
         self.name = path.rstrip("/").split("/")[-1]
+        # Odoo state of the module
+        self.state = None
         # Manifest of the module
         self.manifest = {}
         # Models defined in the module
@@ -292,11 +294,11 @@ class Module:
             if not file.endswith(".js"):
                 continue
 
-            module = JSModule.from_file(file, pattern)
-            if not module:
+            modules = JSModule.from_file(file, pattern)
+            if not modules:
                 return
 
-            self.js_modules[module.name] = module
+            self.js_modules.update(modules)
 
     def _parse_assets(self, parent_path):
         for files in self.manifest.get("assets", {}).values():
@@ -379,6 +381,7 @@ class Module:
     def to_json(self):
         return {
             "path": self.path,
+            "state": self.state,
             "name": self.name,
             "duration": self.duration,
             "manifest": self.manifest,
@@ -426,7 +429,7 @@ class Module:
         return module
 
     @classmethod
-    def from_path(cls, path):
+    def from_path(cls, path, **config):  # noqa: C901
         parent_path = str(Path(path).parent.absolute())
         files_list = []
         analyse_start = time.time()
@@ -452,10 +455,11 @@ class Module:
             # Found the init script
             if f == "__init__.py":
                 found_init = True
-                module._parse_python(path, f)
+                if not config.get("skip_python"):
+                    module._parse_python(path, f)
 
             # Found the readme
-            elif is_readme(f):
+            elif is_readme(f) and not config.get("skip_readme"):
                 module._parse_readme(path + f)
 
             filepath = os.path.join(path, f)
@@ -465,17 +469,20 @@ class Module:
         if not found_init:
             return None
 
-        module.analyse_language()
+        if not config.get("skip_language"):
+            module.analyse_language()
 
-        module._parse_assets(parent_path)
+        if not config.get("skip_assets"):
+            module._parse_assets(parent_path)
 
-        for file in module.files:
-            file_path = os.path.join(path, file)
-            files_list.append(file_path)
-            if file.endswith(".xml"):
-                module._parse_xml(file_path, parent_path)
-            elif file.endswith(".csv"):
-                module._parse_csv(file_path)
+        if not config.get("skip_data"):
+            for file in module.files:
+                file_path = os.path.join(path, file)
+                files_list.append(file_path)
+                if file.endswith(".xml"):
+                    module._parse_xml(file_path, parent_path)
+                elif file.endswith(".csv"):
+                    module._parse_csv(file_path)
 
         module.analyse_hash(files_list)
 
@@ -487,7 +494,7 @@ class Module:
         return module
 
     @classmethod
-    def find_modules_iter(cls, paths, depth=None):
+    def find_modules_iter(cls, paths, depth=None, **config):
         result = {}
         if isinstance(paths, str):
             paths = [paths]
@@ -502,7 +509,7 @@ class Module:
                 continue
 
             try:
-                module = cls.from_path(path)
+                module = cls.from_path(path, **config)
             except Exception as e:
                 _logger.exception(e)
                 continue
@@ -520,5 +527,5 @@ class Module:
                 paths.extend((p, d + 1) for p in sub_paths if os.path.isdir(p))
 
     @classmethod
-    def find_modules(cls, paths, depth=None):
-        return dict(cls.find_modules_iter(paths, depth))
+    def find_modules(cls, paths, depth=None, **config):
+        return dict(cls.find_modules_iter(paths, depth, **config))

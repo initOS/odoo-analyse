@@ -74,9 +74,9 @@ def url_to_module_path(url):
         if url.endswith(".js"):
             url = url[:-3]
         if match["type"] == "src":
-            return "@%s%s" % (match["module"], url)
+            return f"@{match['module']}{url}"
 
-        return "@%s/../tests%s" % (match["module"], url)
+        return f"@{match['module']}/../tests{url}"
     return url
 
 
@@ -94,8 +94,8 @@ class JSModule:
     def __repr__(self):
         name = self.name
         if self.alias:
-            name = "%s/%s" % (name, self.alias)
-        return "<JS: %s>" % name
+            name = f"{name}/{self.alias}"
+        return f"<JS: {name}>"
 
     def copy(self):
         return JSModule(
@@ -140,24 +140,30 @@ class JSModule:
         # Old odoo.define format
         defines = ODOO_DEFINE_RE.findall(content)
         if defines:
-            if len(defines) > 1:
-                _logger.warning("Multiple odoo.define in single JS %s", name)
-
-            define = defines[0][1]
-            requires = [x[1] for x in REQUIRE_RE.findall(content)]
-            return cls(name, alias=define, complexity=complexity, requires=requires)
+            result = {}
+            for define in defines:
+                requires = [x[1] for x in REQUIRE_RE.findall(content)]
+                result[name] = cls(
+                    name,
+                    alias=define[1],
+                    complexity=complexity,
+                    requires=requires,
+                )
+            return result
 
         # Newer odoo-module format
         module = ODOO_MODULE_RE.findall(content)
         if module:
             imports = [x[-1] for x in IMPORT_BASIC_RE.findall(content)]
             requires = [x[1] for x in REQUIRE_RE.findall(content)]
-            return cls(
-                name,
-                alias=module[0][2],
-                complexity=complexity,
-                default=not module[0][4],
-                requires=imports + requires,
-            )
+            return {
+                name: cls(
+                    name,
+                    alias=module[0][2],
+                    complexity=complexity,
+                    default=not module[0][4],
+                    requires=imports + requires,
+                )
+            }
 
-        return cls(name, complexity=complexity)
+        return {name: cls(name, complexity=complexity)}

@@ -37,4 +37,4 @@ disable=bad-inline-option,
 
 
 [IMPORTS]
-ignored-modules=lxml,odoo,pytest
+ignored-modules=lxml,odoo,pytest,radon,odoo_analyse

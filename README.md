@@ -47,6 +47,8 @@ Or if you want to output it to `stdout`:
 
 `--test-filter` .. Include module starting with `test_`
 
+`--estimate-state` .. Estimate the state of a module (installed/uninstalled) only using dependencies and auto_install flags.
+
 `--state-filter installed` .. Only modules with a specific state. This connects to a database to determine the state of a module. The connection information are extracted from a configuration file or using the database parameters
 
 `--full-graph` .. If set all the above filters are only used for the starting nodes and not for the base modules
@@ -76,6 +78,22 @@ These options can be used to extract instance specific information about modules
 `--db-user user` .. Name of the user to access the database
 
 `--db-password` .. If specified a password prompt will ask for the password to connect to the database
+
+### Skipping
+
+These options control what is analysed and can result in a faster analyse.
+
+`--skip-all` .. All of the below
+
+`--skip-assets` .. Skip analysing assets (JS, CSS, Web Templates, ...)
+
+`--skip-data` .. Skip analysing CSV and XML data
+
+`--skip-language` .. Skip analysing the lines of code
+
+`--skip-python` .. Skip analysing python files (controllers, models, ...)
+
+`--skip-readme` .. Skip reading the readme files
 
 ## Examples
 
@@ -112,4 +130,7 @@ $ odoo_analyse -l /path/to/cache.json --modules 'sale_*' --show-dependency --ful
 
 # Connect to the database from the odoo.cfg and create the dependency graph of all installed modules
 $ odoo_analyse -l /path/to/cache.json -c /path/to/odoo.cfg --state-filter installed --show-dependency
+
+# Estimate the state using the module dependencies and auto_install flags based on the `modules` given via stdin. Output the analysed installed modules to `analyse.json`.
+$ cat modules.txt | odoo_analyse -p odoo --modules - --analyse analyse.json --estimate-state --state-filter installed
 ```
