@@ -14,6 +14,13 @@ from json.decoder import JSONDecodeError
 _logger = logging.getLogger(__name__)
 
 
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, (tuple, set)):
+            return list(o)
+        return super().default(o)
+
+
 def call(cmd, cwd=None):
     with subprocess.Popen(
         cmd,

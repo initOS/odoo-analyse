@@ -54,7 +54,7 @@ def parser_load_save(parser):
         "--path",
         default=[],
         action="append",
-        help="Specify a path to search for odoo modules",
+        help="Specify a path to search for odoo modules. Multiple use is supported",
     )
     parser.add_argument(
         "-l",
@@ -121,7 +121,7 @@ def parser_filters(parser):
         "--modules",
         default="*",
         help="Filter out modules which names aren't matching the glob. "
-        "Separate multiple filters by comma. Use `-` load load from stdin",
+        "Separate multiple filters by comma. Use `-` to load from stdin",
     )
     parser.add_argument(
         "--views",
@@ -307,7 +307,12 @@ def parse_args():
 
     parser_load_save(parser.add_argument_group("Loading/Saving"))
     parser_analyse(parser.add_argument_group("Analyse Options"))
-    parser_filters(parser.add_argument_group("Filters"))
+    parser_filters(
+        parser.add_argument_group(
+            "Filters",
+            "Filters are using to hide module for the graphs and analyse output",
+        )
+    )
     parser_database(parser.add_argument_group("Database"))
     parser_module_graph(
         parser.add_argument_group(

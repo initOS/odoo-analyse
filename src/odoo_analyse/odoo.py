@@ -10,6 +10,7 @@ from configparser import ConfigParser
 from fnmatch import fnmatch
 from functools import reduce
 
+from . import utils
 from .module import Module
 
 try:
@@ -331,10 +332,10 @@ class Odoo:
         """Output the analyse result as JSON"""
         # Write to a file or stdout
         if file_path == "-":
-            print(json.dumps(data, indent=2))
+            print(json.dumps(data, indent=2, cls=utils.JSONEncoder))
         else:
             with open(file_path, "w+", encoding="utf-8") as fp:
-                json.dump(data, fp, indent=2)
+                json.dump(data, fp, indent=2, cls=utils.JSONEncoder)
 
     def load_path(self, paths, depth=None, **config):
         if isinstance(paths, str):
@@ -358,10 +359,10 @@ class Odoo:
     def save_json(self, filename):
         data = {k: m.to_json() for k, m in self.full.items()}
         if filename == "-":
-            json.dump(data, sys.stdout)
+            json.dump(data, sys.stdout, cls=utils.JSONEncoder)
         else:
             with open(filename, "w+", encoding="utf-8") as fp:
-                json.dump(data, fp)
+                json.dump(data, fp, cls=utils.JSONEncoder)
 
     def _find_edges_in_loop(self, graph):  # pylint: disable=R0201
         # Eliminate not referenced and not referring modules
