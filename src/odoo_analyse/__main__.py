@@ -102,6 +102,13 @@ def parser_analyse(parser):
         action="store_true",
         help="Only analyse the absolute minimum",
     )
+    parser.add_argument(
+        "-j",
+        "--jobs",
+        default=os.cpu_count(),
+        type=int,
+        help="Number of modules to analyse in parallel",
+    )
 
 
 def parser_filters(parser):
@@ -365,6 +372,7 @@ def main():  # noqa: C901  # pylint: disable=R0915
         "skip_language": args.skip_language or args.skip_all,
         "skip_python": args.skip_python or args.skip_all,
         "skip_readme": args.skip_readme or args.skip_all,
+        "jobs": args.jobs,
     }
 
     for p in args.path:

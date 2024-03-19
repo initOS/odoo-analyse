@@ -19,4 +19,4 @@ __all__ = [
     "geometric_mean",
 ]
 
-VERSION = "1.6.1"
+VERSION = "2.0.0"

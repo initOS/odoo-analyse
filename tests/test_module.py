@@ -1,6 +1,7 @@
 # © 2020 initOS GmbH
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
+import asyncio
 import os
 from unittest import mock
 
@@ -8,7 +9,7 @@ from odoo_analyse import Model, Module, Record, module
 
 
 def get_module():
-    modules = Module.find_modules(os.path.abspath("tests/"))
+    modules = asyncio.run(Module.find_modules(os.path.abspath("tests/")))
     return modules["testing_module"]
 
 

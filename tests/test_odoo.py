@@ -36,10 +36,10 @@ def test_odoo_path(odoo):
 
 def test_odoo_creation():
     path = os.path.abspath("tests")
-    assert Odoo.from_path("%s/testing_module/__manifest__.py" % path) is None
+    assert Odoo.from_path(f"{path}/testing_module/__manifest__.py") is None
 
     with tempfile.NamedTemporaryFile("w+") as cfg:
-        cfg.write("[options]\naddons_path=%s\n" % path)
+        cfg.write(f"[options]\naddons_path={path}\n")
         cfg.seek(0)
 
         check_odoo(Odoo.from_config(cfg.name))

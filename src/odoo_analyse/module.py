@@ -2,6 +2,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 import ast
+import asyncio
 import glob
 import logging
 import os
@@ -161,8 +162,8 @@ class Module:
     def __repr__(self):
         return f"<Module: {self.name}>"
 
-    def analyse_language(self):
-        self.language = analyse_language(self.path)
+    async def analyse_language(self):
+        self.language = await analyse_language(self.path)
 
     def analyse_hash(self, files_list):
         self.hashsum = hexhash_files(files_list, self.path)
@@ -285,7 +286,7 @@ class Module:
             self.status.add("missing-file")
             return
 
-    def _parse_js(self, path, pattern):
+    async def _parse_js(self, path, pattern):
         """Parse JavaScript files.
         `path` .. directory of the module
         `pattern` .. relative path/glob of the JS files"""
@@ -294,13 +295,13 @@ class Module:
             if not file.endswith(".js"):
                 continue
 
-            modules = JSModule.from_file(file, pattern)
+            modules = await JSModule.from_file(file, pattern)
             if not modules:
                 return
 
             self.js_modules.update(modules)
 
-    def _parse_assets(self, parent_path):
+    async def _parse_assets(self, parent_path):
         for files in self.manifest.get("assets", {}).values():
             for file in files:
                 # Might be a tuple with include/remove
@@ -309,9 +310,9 @@ class Module:
                 if not isinstance(file, str):
                     file = file[-1]
 
-                self._parse_js(parent_path, file)
+                await self._parse_js(parent_path, file)
 
-    def _parse_xml(self, path, parent_path=None):
+    async def _parse_xml(self, path, parent_path=None):
         if not os.path.isfile(path):
             self.status.add("missing-file")
             return
@@ -363,7 +364,7 @@ class Module:
 
             for script in obj.xpath("//script/@src"):
                 # this will return string a path,
-                self._parse_js(parent_path, script)
+                await self._parse_js(parent_path, script)
 
     def _parse_text_for_keywords(self, texts):
         if not isinstance(texts, list):
@@ -429,7 +430,7 @@ class Module:
         return module
 
     @classmethod
-    def from_path(cls, path, **config):  # noqa: C901
+    async def from_path(cls, path, **config):  # noqa: C901
         parent_path = str(Path(path).parent.absolute())
         files_list = []
         analyse_start = time.time()
@@ -470,17 +471,17 @@ class Module:
             return None
 
         if not config.get("skip_language"):
-            module.analyse_language()
+            await module.analyse_language()
 
         if not config.get("skip_assets"):
-            module._parse_assets(parent_path)
+            await module._parse_assets(parent_path)
 
         if not config.get("skip_data"):
             for file in module.files:
                 file_path = os.path.join(path, file)
                 files_list.append(file_path)
                 if file.endswith(".xml"):
-                    module._parse_xml(file_path, parent_path)
+                    await module._parse_xml(file_path, parent_path)
                 elif file.endswith(".csv"):
                     module._parse_csv(file_path)
 
@@ -494,38 +495,92 @@ class Module:
         return module
 
     @classmethod
-    def find_modules_iter(cls, paths, depth=None, **config):
-        result = {}
+    async def _worker_find_modules(
+        cls, lock, job_queue, result_queue, *, blacklist, max_depth, **config
+    ):
+        while True:
+            await lock.acquire()
+            path, current_depth = await job_queue.get()
+            lock.release()
+
+            try:
+                path = path.strip()
+                if max_depth is not None and current_depth > max_depth:
+                    continue
+
+                try:
+                    module = await cls.from_path(path, **config)
+                except Exception as e:
+                    _logger.error(f"Error on {path}")
+                    _logger.exception(e)
+                    continue
+
+                if module is not None:
+                    name = module.name
+                    await result_queue.put((name, module))
+                else:
+                    sub_paths = [
+                        os.path.join(path, p)
+                        for p in os.listdir(path)
+                        if p not in blacklist
+                    ]
+                    for p in filter(os.path.isdir, sub_paths):
+                        await job_queue.put((p, current_depth + 1))
+            finally:
+                job_queue.task_done()
+
+    @classmethod
+    async def find_modules_iter(cls, paths, *, max_depth=None, **config):
         if isinstance(paths, str):
             paths = [paths]
 
-        paths = [(p, 0) for p in paths]
+        jobs = config.get("jobs", os.cpu_count())
+
+        job_queue = asyncio.Queue()
+        result_queue = asyncio.Queue()
+        lock = asyncio.Semaphore(jobs)
         blacklist = folder_blacklist()
-        # Breadth-first search
-        while paths:
-            path, d = paths.pop(0)
-            path = path.strip()
-            if depth is not None and d > depth:
-                continue
 
-            try:
-                module = cls.from_path(path, **config)
-            except Exception as e:
-                _logger.exception(e)
-                continue
+        for p in paths:
+            await job_queue.put((p, 0))
 
-            if module is not None:
-                name = module.name
-                if name not in result:
-                    yield name, module
-            else:
-                sub_paths = [
-                    os.path.join(path, p)
-                    for p in os.listdir(path)
-                    if p not in blacklist
-                ]
-                paths.extend((p, d + 1) for p in sub_paths if os.path.isdir(p))
+        workers = [
+            asyncio.create_task(
+                cls._worker_find_modules(
+                    lock,
+                    job_queue,
+                    result_queue,
+                    blacklist=blacklist,
+                    max_depth=max_depth,
+                    **config,
+                )
+            )
+            for _ in range(jobs)
+        ]
+
+        # The semaphore should only lock when all workers are waiting
+        while not lock.locked():
+            if not result_queue.empty():
+                yield await result_queue.get()
+            await asyncio.sleep(0)
+
+        # Cancel all workers and wait for it
+        await job_queue.join()
+        for worker in workers:
+            worker.cancel()
+
+        await asyncio.gather(*workers, return_exceptions=True)
+
+        # Clear the result queue fully
+        while not result_queue.empty():
+            yield await result_queue.get()
 
     @classmethod
-    def find_modules(cls, paths, depth=None, **config):
-        return dict(cls.find_modules_iter(paths, depth, **config))
+    async def find_modules(cls, paths, *, max_depth=None, **config):
+        result = {}
+        async for key, value in cls.find_modules_iter(
+            paths, max_depth=max_depth, **config
+        ):
+            result[key] = value
+
+        return result

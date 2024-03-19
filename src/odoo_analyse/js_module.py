@@ -126,7 +126,7 @@ class JSModule:
         )
 
     @classmethod
-    def from_file(cls, path, file):
+    async def from_file(cls, path, file):
         if not os.path.isfile(path):
             return None
 
@@ -135,7 +135,7 @@ class JSModule:
 
         name = url_to_module_path(file)
 
-        complexity = eslint_complexity(path)
+        complexity = await eslint_complexity(path)
 
         # Old odoo.define format
         defines = ODOO_DEFINE_RE.findall(content)

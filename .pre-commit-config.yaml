@@ -18,8 +18,8 @@ repos:
         args:
           - --settings=.
 
-  - repo: https://github.com/pre-commit/mirrors-pylint
-    rev: v2.7.4
+  - repo: https://github.com/pylint-dev/pylint
+    rev: v3.1.0
     hooks:
       - id: pylint
         name: pylint

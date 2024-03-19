@@ -1,6 +1,7 @@
 # © 2020 initOS GmbH
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
+import asyncio
 import os
 import shutil
 from tempfile import NamedTemporaryFile
@@ -18,7 +19,7 @@ def test_blacklist():
 
 def test_call():
     path = "tests/files"
-    output, error = utils.call("ls", cwd=path)
+    output, error = asyncio.run(utils.call("ls", cwd=path))
     assert set(output.splitlines()) == set(os.listdir(path))
     assert not error
 
@@ -50,8 +51,8 @@ def test_hashhex():
 
 def test_hashhex_files():
     base = "tests/files"
-    file_a = "%s/a.txt" % base
-    file_b = "%s/b.txt" % base
+    file_a = f"{base}/a.txt"
+    file_b = f"{base}/b.txt"
     result_a = "9db6c23f9bd47910c1ed8c002acf2af0"
     result_b = "cd5684de227a381e0f81d23eec4aa8ae"
     result = "397578ed65a6340fcf864594306b4198"
@@ -71,11 +72,11 @@ def test_stopwords():
 
 
 def test_analyse_language():
-    data = utils.analyse_language("tests/testing_module")
+    data = asyncio.run(utils.analyse_language("tests/testing_module"))
     assert data
 
     # Missing module
-    assert not utils.analyse_language("tests/no_module")
+    assert not asyncio.run(utils.analyse_language("tests/no_module"))
 
 
 def test_automatic_port():
@@ -94,7 +95,7 @@ def test_missing_tools():
     m.return_value = None
 
     try:
-        res_analyse = utils.analyse_language("file")
+        res_analyse = asyncio.run(utils.analyse_language("file"))
         res_port = utils.try_automatic_port("file")
     finally:
         shutil.which = orig
