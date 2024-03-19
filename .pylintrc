@@ -33,6 +33,7 @@ disable=bad-inline-option,
         too-many-public-methods,
         too-many-return-statements,
         use-symbolic-message-instead,
+        useless-option-value,
         useless-suppression,
 
 

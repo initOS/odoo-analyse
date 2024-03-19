@@ -2,6 +2,7 @@
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
 import ast
+import asyncio
 import hashlib
 import json
 import logging
@@ -21,16 +22,18 @@ class JSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def call(cmd, cwd=None):
-    with subprocess.Popen(
-        cmd,
+async def call(cmd, cwd=None):
+    if isinstance(cmd, str):
+        cmd = [cmd]
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
         stderr=subprocess.PIPE,
         stdout=subprocess.PIPE,
         cwd=cwd,
-        universal_newlines=True,
         env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
-    ) as proc:
-        return [pipe.strip() for pipe in proc.communicate()]
+    )
+    return [pipe.decode().strip() for pipe in await proc.communicate()]
 
 
 def stopwords(words=None):
@@ -112,13 +115,13 @@ def try_automatic_port(filepath):
     return True
 
 
-def analyse_language(path):
+async def analyse_language(path):
     """Analyse the languages of a directory"""
     cmd = shutil.which("cloc")
     if cmd is None:
         return {}
 
-    output, error = call([cmd, path, "--json", "--strip-str-comments"])
+    output, error = await call([cmd, path, "--json", "--strip-str-comments"])
     if error:
         _logger.warning(error)
 
@@ -165,13 +168,13 @@ def get_ast_source_segment(source, node):
     return "".join(segment)
 
 
-def eslint_complexity(js_file):
+async def eslint_complexity(js_file):
     """Return the JS complexity using eslintcc"""
     cmd = shutil.which("eslintcc")
     if not cmd:
         return None
 
-    output, _ = call([cmd, "-a", "-f=json", js_file])
+    output, _ = await call([cmd, "-a", "-f=json", js_file])
     try:
         output = json.loads(output)
     except JSONDecodeError:

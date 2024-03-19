@@ -1,6 +1,7 @@
 # © 2020 initOS GmbH
 # License LGPL-3.0 or later (https://www.gnu.org/licenses/lgpl.html)
 
+import asyncio
 import csv
 import json
 import logging
@@ -337,11 +338,11 @@ class Odoo:
             with open(file_path, "w+", encoding="utf-8") as fp:
                 json.dump(data, fp, indent=2, cls=utils.JSONEncoder)
 
-    def load_path(self, paths, depth=None, **config):
+    def load_path(self, paths, *, max_depth=None, **config):
         if isinstance(paths, str):
             paths = [paths]
 
-        result = Module.find_modules(paths, depth=depth, **config)
+        result = asyncio.run(Module.find_modules(paths, max_depth=max_depth, **config))
 
         self.full.update(result.copy())
         self.modules.update(result.copy())
